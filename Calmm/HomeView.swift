@@ -15,14 +15,14 @@ struct HomeView: View {
 
     private var currentImageName: String {
         if let cryingFrame {
-            return "crying\(cryingFrame)"
+            return "Crying\(cryingFrame)"
         }
 
         if isPetting {
-            return "touchingCat"
+            return "TouchingCat"
         }
 
-        return isTailUp ? "Tailup" : "Taildown"
+        return isTailUp ? "TailUp" : "TailDown"
     }
 
     var body: some View {
@@ -30,6 +30,12 @@ struct HomeView: View {
             let catSize = min(geometry.size.width * 1.22, geometry.size.height * 0.82)
 
             ZStack {
+                Image("background")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .clipped()
+
                 Image(currentImageName)
                     .interpolation(.none)
                     .resizable()
