@@ -1,11 +1,13 @@
 import SwiftUI
 import Combine
+import AVFoundation
 
 struct HomeView: View {
     @State private var isTailUp = false
     @State private var isPetting = false
     @State private var cryingFrame: Int?
     @State private var cryingTask: Task<Void, Never>?
+    @StateObject private var purrPlayer = PurrPlayer()
 
     private let idleTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
     private let cryingFrames = [1, 2, 3, 4, 5]
@@ -46,6 +48,7 @@ struct HomeView: View {
         .onDisappear {
             cryingTask?.cancel()
             cryingTask = nil
+            purrPlayer.stop()
         }
     }
 
@@ -60,12 +63,14 @@ struct HomeView: View {
                 cryingTask = nil
                 cryingFrame = nil
                 isPetting = true
+                purrPlayer.start()
             }
             .onEnded { value in
                 let movement = hypot(value.translation.width, value.translation.height)
 
                 if movement >= pettingThreshold {
                     isPetting = false
+                    purrPlayer.stop()
                 } else {
                     playCryAnimation()
                 }
@@ -75,6 +80,7 @@ struct HomeView: View {
     private func playCryAnimation() {
         cryingTask?.cancel()
         isPetting = false
+        purrPlayer.stop()
 
         cryingTask = Task {
             for frame in cryingFrames {
@@ -88,6 +94,51 @@ struct HomeView: View {
             await MainActor.run {
                 cryingFrame = nil
                 cryingTask = nil
+            }
+        }
+    }
+}
+
+final class PurrPlayer: ObservableObject {
+    private var audioPlayer: AVAudioPlayer?
+    private let audioCandidates = [
+        ("purringCat", "mp3"),
+        ("purringCat", "m4a"),
+        ("purringCat", "wav"),
+        ("purringCat", "caf"),
+        ("purr", "mp3"),
+        ("purr", "m4a"),
+        ("purr", "wav"),
+        ("purr", "caf"),
+    ]
+
+    func start() {
+        guard let audioPlayer else {
+            preparePlayer()
+            self.audioPlayer?.play()
+            return
+        }
+
+        if !audioPlayer.isPlaying {
+            audioPlayer.currentTime = 0
+            audioPlayer.play()
+        }
+    }
+
+    func stop() {
+        audioPlayer?.stop()
+        audioPlayer?.currentTime = 0
+    }
+
+    private func preparePlayer() {
+        guard audioPlayer == nil else { return }
+
+        for (resourceName, fileExtension) in audioCandidates {
+            if let url = Bundle.main.url(forResource: resourceName, withExtension: fileExtension) {
+                audioPlayer = try? AVAudioPlayer(contentsOf: url)
+                audioPlayer?.numberOfLoops = -1
+                audioPlayer?.prepareToPlay()
+                return
             }
         }
     }
