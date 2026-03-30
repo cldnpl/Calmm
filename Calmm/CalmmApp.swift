@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct CalmmApp: App {
@@ -13,5 +14,6 @@ struct CalmmApp: App {
         WindowGroup {
             ContentView()
         }
+        .modelContainer(for: CatModel.self)
     }
 }
