@@ -1,17 +1,13 @@
-//
-//  Models.swift
-//  Calmm
-//
-//  Created by Raffaele Barra on 30/03/2026.
-//
-
 import Foundation
 import SwiftData
 
 @Model
-class CatModel {
+final class CatModel {
     var name: String
     var hunger: Int
+    var hungerProgress: Double
+    var cleanliness: Int
+    var cleanlinessProgress: Double
     var happiness: Int
     var energy: Int
     var xp: Int
@@ -21,7 +17,10 @@ class CatModel {
 
     init(name: String = "Calmm") {
         self.name = name
-        self.hunger = 80
+        self.hunger = 100
+        self.hungerProgress = 100
+        self.cleanliness = 100
+        self.cleanlinessProgress = 100
         self.happiness = 80
         self.energy = 100
         self.xp = 0
@@ -30,7 +29,3 @@ class CatModel {
         self.lastSeen = Date()
     }
 }
-
-
-
-
