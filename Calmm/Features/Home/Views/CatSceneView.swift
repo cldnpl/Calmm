@@ -7,6 +7,7 @@ struct CatSceneView<CatGesture: Gesture>: View {
     var body: some View {
         GeometryReader { geometry in
             let catSize = min(geometry.size.width * 1.22, geometry.size.height * 0.82)
+            let catVerticalOffset = geometry.size.height * 0.08
 
             ZStack {
                 Image("background")
@@ -21,6 +22,7 @@ struct CatSceneView<CatGesture: Gesture>: View {
                     .scaledToFit()
                     .frame(width: catSize, height: catSize)
                     .rotationEffect(.degrees(90))
+                    .offset(y: catVerticalOffset)
                     .contentShape(Rectangle())
                     .gesture(catGesture)
             }
