@@ -1,17 +1,16 @@
-import Combine
 import Foundation
 import SwiftData
 import SwiftUI
 
-@MainActor
-final class CatNeedsViewModel: ObservableObject {
+@Observable
+final class CatNeedsViewModel {
     enum Need: Hashable {
         case hunger
         case cleanliness
     }
 
-    @Published private(set) var hunger: Double = 100
-    @Published private(set) var cleanliness: Double = 100
+    private(set) var hunger: Double = 100
+    private(set) var cleanliness: Double = 100
 
     private let hungerDecayPerSecond = 1.0 / 90.0
     private let cleanlinessDecayPerSecond = 1.0 / 120.0
@@ -30,7 +29,6 @@ final class CatNeedsViewModel: ObservableObject {
         self.modelContext = modelContext
         self.cat = cat
 
-        normalizeStoredValues(for: cat)
         syncFromStorage(now: Date())
         startDecayLoopIfNeeded()
     }
@@ -62,25 +60,12 @@ final class CatNeedsViewModel: ObservableObject {
         self.cleanliness = clamp(cleanliness)
     }
 
-    private func normalizeStoredValues(for cat: CatModel) {
-        if cat.hungerProgress == 0, cat.hunger > 0 {
-            cat.hungerProgress = Double(cat.hunger)
-        }
-
-        if cat.cleanliness == 0, cat.cleanlinessProgress == 0 {
-            cat.cleanliness = 100
-            cat.cleanlinessProgress = 100
-        } else if cat.cleanlinessProgress == 0, cat.cleanliness > 0 {
-            cat.cleanlinessProgress = Double(cat.cleanliness)
-        }
-    }
-
     private func syncFromStorage(now: Date) {
         guard let cat else { return }
 
         let elapsed = max(0, now.timeIntervalSince(cat.lastSeen))
-        hunger = clamp(cat.hungerProgress - elapsed * hungerDecayPerSecond)
-        cleanliness = clamp(cat.cleanlinessProgress - elapsed * cleanlinessDecayPerSecond)
+        hunger = clamp(cat.hunger - elapsed * hungerDecayPerSecond)
+        cleanliness = clamp(cat.cleanliness - elapsed * cleanlinessDecayPerSecond)
         persistCurrentState(at: now)
     }
 
@@ -104,7 +89,7 @@ final class CatNeedsViewModel: ObservableObject {
     private func applyDecay(seconds: TimeInterval) {
         hunger = clamp(hunger - seconds * hungerDecayPerSecond)
         cleanliness = clamp(cleanliness - seconds * cleanlinessDecayPerSecond)
-        persistCurrentState(at: Date())
+        // No SwiftData write on every tick — persisted only on scene phase change
     }
 
     private func startRestoration(for need: Need, amount: Double) {
@@ -120,9 +105,7 @@ final class CatNeedsViewModel: ObservableObject {
                 guard !Task.isCancelled else { break }
 
                 let shouldContinue = self?.advanceRestoration(for: need, target: target) ?? false
-                if !shouldContinue {
-                    break
-                }
+                if !shouldContinue { break }
             }
 
             self?.finishRestoration(for: need)
@@ -134,39 +117,33 @@ final class CatNeedsViewModel: ObservableObject {
         guard currentValue < target else { return false }
 
         setValue(min(target, currentValue + restorePointsPerTick), for: need)
-        persistCurrentState(at: Date())
         return value(for: need) < target
     }
 
     private func finishRestoration(for need: Need) {
         restorationTasks[need] = nil
+        persistCurrentState(at: Date())  // Save once when restoration animation completes
     }
 
     private func value(for need: Need) -> Double {
         switch need {
-        case .hunger:
-            return hunger
-        case .cleanliness:
-            return cleanliness
+        case .hunger: return hunger
+        case .cleanliness: return cleanliness
         }
     }
 
     private func setValue(_ newValue: Double, for need: Need) {
         switch need {
-        case .hunger:
-            hunger = clamp(newValue)
-        case .cleanliness:
-            cleanliness = clamp(newValue)
+        case .hunger: hunger = clamp(newValue)
+        case .cleanliness: cleanliness = clamp(newValue)
         }
     }
 
     private func persistCurrentState(at date: Date) {
         guard let cat else { return }
 
-        cat.hungerProgress = hunger
-        cat.hunger = Int(hunger.rounded())
-        cat.cleanlinessProgress = cleanliness
-        cat.cleanliness = Int(cleanliness.rounded())
+        cat.hunger = hunger
+        cat.cleanliness = cleanliness
         cat.lastSeen = date
 
         try? modelContext?.save()

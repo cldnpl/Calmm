@@ -6,8 +6,8 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Query private var cats: [CatModel]
 
-    @StateObject private var rootViewModel = RootViewModel()
-    @StateObject private var needsViewModel = CatNeedsViewModel()
+    @State private var rootViewModel = RootViewModel()
+    @State private var needsViewModel = CatNeedsViewModel()
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -16,16 +16,16 @@ struct RootView: View {
 
             CustomTabBar(selectedTab: $rootViewModel.selectedTab)
         }
-        .environmentObject(needsViewModel)
+        .environment(needsViewModel)
         .ignoresSafeArea(edges: .bottom)
         .onAppear {
             ensureCatExists()
             connectNeedsIfPossible()
         }
-        .onChange(of: cats.count) { _ in
+        .onChange(of: cats.count) {
             connectNeedsIfPossible()
         }
-        .onChange(of: scenePhase) { newPhase in
+        .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 ensureCatExists()
                 connectNeedsIfPossible()
@@ -39,7 +39,7 @@ struct RootView: View {
     private var currentTabView: some View {
         switch rootViewModel.selectedTab {
         case .games:
-            GamesView()
+            MinigameSelectView()
         case .shop:
             ShopView()
         case .home:

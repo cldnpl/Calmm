@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct GamesView: View {
+struct MinigameSelectView: View {
     var body: some View {
         PlaceholderTabView(title: "Games")
     }

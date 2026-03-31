@@ -2,8 +2,8 @@ import Combine
 import SwiftUI
 
 struct HomeView: View {
-    @EnvironmentObject private var needsViewModel: CatNeedsViewModel
-    @StateObject private var viewModel = HomeViewModel()
+    @Environment(CatNeedsViewModel.self) private var needsViewModel
+    @State private var viewModel = HomeViewModel()
 
     private let idleTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
@@ -40,13 +40,10 @@ struct HomeView: View {
     }
 }
 
-@MainActor
-struct HomeView_Previews: PreviewProvider {
-    static var previews: some View {
-        let needsViewModel = CatNeedsViewModel()
-        needsViewModel.loadPreview(hunger: 76, cleanliness: 88)
+#Preview {
+    let needsViewModel = CatNeedsViewModel()
+    needsViewModel.loadPreview(hunger: 76, cleanliness: 88)
 
-        return HomeView()
-            .environmentObject(needsViewModel)
-    }
+    return HomeView()
+        .environment(needsViewModel)
 }
