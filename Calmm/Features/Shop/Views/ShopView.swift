@@ -1,7 +1,10 @@
 import SwiftUI
 
 struct ShopView: View {
+    @Environment(CatNeedsViewModel.self) private var needsViewModel
+
     @State private var expandedSection: ShopSection.ID?
+    @State private var showInsufficientCoinsAlert = false
 
     private let sections: [ShopSection] = [
         ShopSection(
@@ -10,10 +13,10 @@ struct ShopView: View {
             iconName: "tshirt.fill",
             accentColorHex: "D97B5D",
             items: [
-                ShopItem(name: "Cloth 1", price: 120),
-                ShopItem(name: "Cloth 2", price: 180),
-                ShopItem(name: "Cloth 3", price: 220),
-                ShopItem(name: "Cloth 4", price: 260)
+                ShopItem(name: "Cloth 1", price: 120, symbolName: "tshirt.fill"),
+                ShopItem(name: "Cloth 2", price: 180, symbolName: "bag.fill"),
+                ShopItem(name: "Cloth 3", price: 220, symbolName: "tag.fill"),
+                ShopItem(name: "Cloth 4", price: 260, symbolName: "tag.fill")
             ]
         ),
         ShopSection(
@@ -22,10 +25,10 @@ struct ShopView: View {
             iconName: "carrot.fill",
             accentColorHex: "E4A64B",
             items: [
-                ShopItem(name: "Food 1", price: 30),
-                ShopItem(name: "Food 2", price: 45),
-                ShopItem(name: "Food 3", price: 60),
-                ShopItem(name: "Food 4", price: 80)
+                ShopItem(name: "Milk", price: 20, assetName: "Milk"),
+                ShopItem(name: "Donut", price: 35, assetName: "Donut"),
+                ShopItem(name: "Dryfish", price: 45, assetName: "Dryfish"),
+                ShopItem(name: "Fishfood", price: 30, assetName: "Fishfood")
             ]
         )
     ]
@@ -65,6 +68,9 @@ struct ShopView: View {
                 .safeAreaPadding(.bottom, 116)
             }
         }
+        .alert("non hai abbastanza monete", isPresented: $showInsufficientCoinsAlert) {
+            Button("OK", role: .cancel) {}
+        }
     }
 
     private var shopContent: some View {
@@ -75,6 +81,9 @@ struct ShopView: View {
                 ShopExpandableSection(
                     section: section,
                     isExpanded: expandedSection == section.id,
+                    onBuy: { item in
+                        handlePurchase(of: item)
+                    },
                     onToggle: {
                         withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
                             expandedSection = expandedSection == section.id ? nil : section.id
@@ -97,6 +106,8 @@ struct ShopView: View {
             Text("Time to go shopping!")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Color(hex: "7D5A4E"))
+
+            coinBadge
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -108,11 +119,40 @@ struct ShopView: View {
         )
         .shadow(color: .black.opacity(0.08), radius: 14, y: 8)
     }
+
+    private var coinBadge: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "bitcoinsign.circle.fill")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(Color(hex: "E4A64B"))
+
+            Text("\(needsViewModel.coinCount) coins")
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(Color(hex: "5A392D"))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            Capsule()
+                .fill(Color(hex: "FFF8F1"))
+        )
+        .overlay(
+            Capsule()
+                .stroke(.white.opacity(0.75), lineWidth: 1)
+        )
+    }
+
+    private func handlePurchase(of item: ShopItem) {
+        if !needsViewModel.spendCoins(item.price) {
+            showInsufficientCoinsAlert = true
+        }
+    }
 }
 
 private struct ShopExpandableSection: View {
     let section: ShopSection
     let isExpanded: Bool
+    let onBuy: (ShopItem) -> Void
     let onToggle: () -> Void
 
     var body: some View {
@@ -158,7 +198,13 @@ private struct ShopExpandableSection: View {
             if isExpanded {
                 VStack(spacing: 12) {
                     ForEach(section.items) { item in
-                        ShopItemRow(item: item, accentColorHex: section.accentColorHex)
+                        ShopItemRow(
+                            item: item,
+                            accentColorHex: section.accentColorHex,
+                            onBuy: {
+                                onBuy(item)
+                            }
+                        )
                     }
                 }
                 .padding(.horizontal, 14)
@@ -182,9 +228,12 @@ private struct ShopExpandableSection: View {
 private struct ShopItemRow: View {
     let item: ShopItem
     let accentColorHex: String
+    let onBuy: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
+            itemArtwork
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.name)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
@@ -197,8 +246,7 @@ private struct ShopItemRow: View {
 
             Spacer()
 
-            Button {
-            } label: {
+            Button(action: onBuy) {
                 Text("Buy")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(.white)
@@ -216,6 +264,26 @@ private struct ShopItemRow: View {
                 .fill(Color(hex: "FFF8F1"))
         )
     }
+
+    @ViewBuilder
+    private var itemArtwork: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white.opacity(0.95))
+                .frame(width: 72, height: 72)
+
+            if let assetName = item.assetName {
+                Image(assetName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 90, height: 90)
+            } else if let symbolName = item.symbolName {
+                Image(systemName: symbolName)
+                    .font(.system(size: 100, weight: .bold))
+                    .foregroundStyle(Color(hex: accentColorHex))
+            }
+        }
+    }
 }
 
 private struct ShopSection: Identifiable {
@@ -231,10 +299,16 @@ private struct ShopItem: Identifiable {
     let id = UUID()
     let name: String
     let price: Int
+    var assetName: String?
+    var symbolName: String?
 }
 
 #Preview {
-    ShopView()
+    let needsViewModel = CatNeedsViewModel()
+    needsViewModel.loadPreview(hunger: 76, cleanliness: 88)
+
+    return ShopView()
+        .environment(needsViewModel)
 }
 
 #Preview("Shop Section Expanded") {
@@ -249,11 +323,12 @@ private struct ShopItem: Identifiable {
                 iconName: "tshirt.fill",
                 accentColorHex: "D97B5D",
                 items: [
-                    ShopItem(name: "Cloth 1", price: 120),
-                    ShopItem(name: "Cloth 2", price: 180)
+                    ShopItem(name: "Cloth 1", price: 120, symbolName: "tshirt.fill"),
+                    ShopItem(name: "Cloth 2", price: 180, symbolName: "bag.fill")
                 ]
             ),
             isExpanded: true,
+            onBuy: { _ in },
             onToggle: {}
         )
         .padding(20)
@@ -266,8 +341,9 @@ private struct ShopItem: Identifiable {
             .ignoresSafeArea()
 
         ShopItemRow(
-            item: ShopItem(name: "Food 1", price: 30),
-            accentColorHex: "E4A64B"
+            item: ShopItem(name: "Milk", price: 20, assetName: "Milk"),
+            accentColorHex: "E4A64B",
+            onBuy: {}
         )
         .padding(20)
     }

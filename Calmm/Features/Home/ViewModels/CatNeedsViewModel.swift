@@ -27,6 +27,15 @@ final class CatNeedsViewModel {
     var cleanlinessPercentage: Double { cleanliness }
     var coinCount: Int { coins }
 
+    @discardableResult
+    func spendCoins(_ amount: Int) -> Bool {
+        guard amount > 0, coins >= amount else { return false }
+
+        coins -= amount
+        persistCurrentState(at: Date())
+        return true
+    }
+
     func connect(modelContext: ModelContext, cat: CatModel) {
         self.modelContext = modelContext
         self.cat = cat
@@ -148,6 +157,7 @@ final class CatNeedsViewModel {
 
         cat.hunger = hunger
         cat.cleanliness = cleanliness
+        cat.coins = coins
         cat.lastSeen = date
 
         try? modelContext?.save()
