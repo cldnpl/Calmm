@@ -10,14 +10,27 @@ struct RootView: View {
     @State private var needsViewModel = CatNeedsViewModel()
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            currentTabView
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        Group {
+            if let cat = cats.first {
+                if !cat.hasCompletedOnboarding {
+                    // Show onboarding on first launch
+                    OnboardingView(cat: cat)
+                } else {
+                    // Main game
+                    ZStack(alignment: .bottom) {
+                        currentTabView
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            CustomTabBar(selectedTab: $rootViewModel.selectedTab)
+                        CustomTabBar(selectedTab: $rootViewModel.selectedTab)
+                    }
+                    .ignoresSafeArea(edges: .bottom)
+                }
+            } else {
+                // Cat not created yet — show nothing while ensureCatExists() runs
+                Color(hex: "FDF6EE").ignoresSafeArea()
+            }
         }
         .environment(needsViewModel)
-        .ignoresSafeArea(edges: .bottom)
         .onAppear {
             ensureCatExists()
             connectNeedsIfPossible()
@@ -30,7 +43,6 @@ struct RootView: View {
                 ensureCatExists()
                 connectNeedsIfPossible()
             }
-
             needsViewModel.handleScenePhase(newPhase)
         }
     }
@@ -53,7 +65,6 @@ struct RootView: View {
 
     private func ensureCatExists() {
         guard cats.isEmpty else { return }
-
         modelContext.insert(CatModel())
         try? modelContext.save()
     }

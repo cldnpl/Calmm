@@ -6,18 +6,43 @@ import SwiftData
 enum FurColor: String, Codable, CaseIterable {
     case orange
     case gray
-    case white
     case black
-    case brown
-    case cream
+
+    var assetName: String {
+        switch self {
+        case .orange: return "CatOrange"
+        case .gray:   return "CatGray"
+        case .black:  return "CatBlack"
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .orange: return "Orange"
+        case .gray:   return "Gray"
+        case .black:  return "Black"
+        }
+    }
 }
 
-enum EyeColor: String, Codable, CaseIterable {
-    case green
-    case blue
-    case yellow
-    case amber
-    case teal
+// EyeColor is a UI-only helper for presets — NOT stored in SwiftData.
+// CatModel stores eyeColor as a plain hex String instead.
+enum EyeColor: String, CaseIterable {
+    case green  = "4CAF7D"
+    case blue   = "5B9BD5"
+    case yellow = "F0C040"
+    case amber  = "E8873A"
+    case teal   = "3DBDB8"
+
+    var displayName: String {
+        switch self {
+        case .green:  return "Green"
+        case .blue:   return "Blue"
+        case .yellow: return "Yellow"
+        case .amber:  return "Amber"
+        case .teal:   return "Teal"
+        }
+    }
 }
 
 enum AccessoryID: String, Codable, CaseIterable {
@@ -34,7 +59,7 @@ final class CatModel {
     // Identity
     var name: String
     var furColor: FurColor
-    var eyeColor: EyeColor
+    var eyeColor: String          // hex string e.g. "4CAF7D" — supports presets + custom wheel
 
     // Stats (all 0.0 – 100.0)
     var hunger: Double
@@ -63,7 +88,7 @@ final class CatModel {
     init(
         name: String = "Calmm",
         furColor: FurColor = .orange,
-        eyeColor: EyeColor = .green
+        eyeColor: String = "4CAF7D"
     ) {
         self.name = name
         self.furColor = furColor
@@ -131,8 +156,6 @@ extension CatModel {
 
     /// XP required to reach a given level (from level 1).
     static func xpRequired(forLevel level: Int) -> Int {
-        // Each level requires 500 * level XP from the previous level
-        // e.g. level 2 = 500, level 3 = 1000, level 4 = 1500 ...
         guard level > 1 else { return 0 }
         return (1..<level).reduce(0) { $0 + 500 * $1 }
     }
