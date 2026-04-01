@@ -61,3 +61,19 @@ struct NeedProgressBar: View {
         }
     }
 }
+
+#Preview {
+    ZStack {
+        Color(hex: "6E4638")
+            .ignoresSafeArea()
+
+        NeedProgressBar(
+            title: "Hunger",
+            systemImage: "fork.knife",
+            value: 76,
+            tint: Color(hex: "F0997B"),
+            trackTint: Color(hex: "5B382D")
+        )
+        .padding(20)
+    }
+}

@@ -5,3 +5,7 @@ struct MinigameSelectView: View {
         PlaceholderTabView(title: "Games")
     }
 }
+
+#Preview {
+    MinigameSelectView()
+}

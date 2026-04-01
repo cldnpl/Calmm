@@ -5,3 +5,7 @@ struct ProfileView: View {
         PlaceholderTabView(title: "Profile")
     }
 }
+
+#Preview {
+    ProfileView()
+}

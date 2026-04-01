@@ -24,3 +24,13 @@ struct CatNeedsOverlayView: View {
         }
     }
 }
+
+#Preview {
+    ZStack {
+        Color.black.opacity(0.35)
+            .ignoresSafeArea()
+
+        CatNeedsOverlayView(hunger: 72, cleanliness: 88)
+            .padding(20)
+    }
+}

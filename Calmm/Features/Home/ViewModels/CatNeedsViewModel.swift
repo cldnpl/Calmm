@@ -11,6 +11,7 @@ final class CatNeedsViewModel {
 
     private(set) var hunger: Double = 100
     private(set) var cleanliness: Double = 100
+    private(set) var coins: Int = 0
 
     private let hungerDecayPerSecond = 1.0 / 90.0
     private let cleanlinessDecayPerSecond = 1.0 / 120.0
@@ -24,6 +25,7 @@ final class CatNeedsViewModel {
 
     var hungerPercentage: Double { hunger }
     var cleanlinessPercentage: Double { cleanliness }
+    var coinCount: Int { coins }
 
     func connect(modelContext: ModelContext, cat: CatModel) {
         self.modelContext = modelContext
@@ -58,6 +60,7 @@ final class CatNeedsViewModel {
     func loadPreview(hunger: Double, cleanliness: Double) {
         self.hunger = clamp(hunger)
         self.cleanliness = clamp(cleanliness)
+        self.coins = 50
     }
 
     private func syncFromStorage(now: Date) {
@@ -66,6 +69,7 @@ final class CatNeedsViewModel {
         let elapsed = max(0, now.timeIntervalSince(cat.lastSeen))
         hunger = clamp(cat.hunger - elapsed * hungerDecayPerSecond)
         cleanliness = clamp(cat.cleanliness - elapsed * cleanlinessDecayPerSecond)
+        coins = cat.coins
         persistCurrentState(at: now)
     }
 

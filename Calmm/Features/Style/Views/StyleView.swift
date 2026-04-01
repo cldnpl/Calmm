@@ -5,3 +5,7 @@ struct StyleView: View {
         PlaceholderTabView(title: "Style")
     }
 }
+
+#Preview {
+    StyleView()
+}

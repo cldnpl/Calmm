@@ -6,8 +6,8 @@ struct CatSceneView<CatGesture: Gesture>: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let catSize = min(geometry.size.width * 1.22, geometry.size.height * 0.82)
-            let catVerticalOffset = geometry.size.height * 0.08
+            let catSize = min(geometry.size.width * 1.5, geometry.size.height * 0.82)
+            let catVerticalOffset = geometry.size.height * 0.1999
 
             ZStack {
                 Image("background")
@@ -29,4 +29,11 @@ struct CatSceneView<CatGesture: Gesture>: View {
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
         }
     }
+}
+
+#Preview {
+    CatSceneView(
+        imageName: "TailUp",
+        catGesture: TapGesture()
+    )
 }
