@@ -7,13 +7,16 @@ final class CatNeedsViewModel {
     enum Need: Hashable {
         case hunger
         case cleanliness
+        case happiness
     }
 
     private(set) var hunger: Double = 100
     private(set) var cleanliness: Double = 100
+    private(set) var happiness: Double = 80
 
-    private let hungerDecayPerSecond = 1.0 / 90.0
-    private let cleanlinessDecayPerSecond = 1.0 / 120.0
+    private let hungerDecayPerSecond = GameConfig.hungerDecayPerSecond
+    private let cleanlinessDecayPerSecond = GameConfig.cleanlinessDecayPerSecond
+    private let happinessDecayPerSecond = GameConfig.happinessDecayPerSecond
     private let restoreTickDuration: Duration = .milliseconds(180)
     private let restorePointsPerTick = 1.2
 
@@ -24,11 +27,11 @@ final class CatNeedsViewModel {
 
     var hungerPercentage: Double { hunger }
     var cleanlinessPercentage: Double { cleanliness }
+    var happinessPercentage: Double { happiness }
 
     func connect(modelContext: ModelContext, cat: CatModel) {
         self.modelContext = modelContext
         self.cat = cat
-
         syncFromStorage(now: Date())
         startDecayLoopIfNeeded()
     }
@@ -47,25 +50,35 @@ final class CatNeedsViewModel {
         }
     }
 
-    func feedCat(amount: Double = 30) {
+    // MARK: - Public restore methods
+
+    func feedCat(amount: Double = GameConfig.basicFoodHungerRestore) {
         startRestoration(for: .hunger, amount: amount)
     }
 
-    func cleanCat(amount: Double = 25) {
+    func cleanCat(amount: Double = GameConfig.brushCleanlinessRestore) {
         startRestoration(for: .cleanliness, amount: amount)
     }
 
-    func loadPreview(hunger: Double, cleanliness: Double) {
+    func petCat(amount: Double = GameConfig.petHappinessRestore) {
+        startRestoration(for: .happiness, amount: amount)
+    }
+
+    func loadPreview(hunger: Double, cleanliness: Double, happiness: Double = 80) {
         self.hunger = clamp(hunger)
         self.cleanliness = clamp(cleanliness)
+        self.happiness = clamp(happiness)
     }
+
+    // MARK: - Private
 
     private func syncFromStorage(now: Date) {
         guard let cat else { return }
 
         let elapsed = max(0, now.timeIntervalSince(cat.lastSeen))
-        hunger = clamp(cat.hunger - elapsed * hungerDecayPerSecond)
+        hunger     = clamp(cat.hunger      - elapsed * hungerDecayPerSecond)
         cleanliness = clamp(cat.cleanliness - elapsed * cleanlinessDecayPerSecond)
+        happiness  = clamp(cat.happiness   - elapsed * happinessDecayPerSecond)
         persistCurrentState(at: now)
     }
 
@@ -87,8 +100,9 @@ final class CatNeedsViewModel {
     }
 
     private func applyDecay(seconds: TimeInterval) {
-        hunger = clamp(hunger - seconds * hungerDecayPerSecond)
+        hunger      = clamp(hunger      - seconds * hungerDecayPerSecond)
         cleanliness = clamp(cleanliness - seconds * cleanlinessDecayPerSecond)
+        happiness   = clamp(happiness   - seconds * happinessDecayPerSecond)
         // No SwiftData write on every tick — persisted only on scene phase change
     }
 
@@ -103,11 +117,9 @@ final class CatNeedsViewModel {
             while !Task.isCancelled {
                 try? await Task.sleep(for: restoreTickDuration)
                 guard !Task.isCancelled else { break }
-
                 let shouldContinue = self?.advanceRestoration(for: need, target: target) ?? false
                 if !shouldContinue { break }
             }
-
             self?.finishRestoration(for: need)
         }
     }
@@ -115,37 +127,37 @@ final class CatNeedsViewModel {
     private func advanceRestoration(for need: Need, target: Double) -> Bool {
         let currentValue = value(for: need)
         guard currentValue < target else { return false }
-
         setValue(min(target, currentValue + restorePointsPerTick), for: need)
         return value(for: need) < target
     }
 
     private func finishRestoration(for need: Need) {
         restorationTasks[need] = nil
-        persistCurrentState(at: Date())  // Save once when restoration animation completes
+        persistCurrentState(at: Date())
     }
 
     private func value(for need: Need) -> Double {
         switch need {
-        case .hunger: return hunger
+        case .hunger:      return hunger
         case .cleanliness: return cleanliness
+        case .happiness:   return happiness
         }
     }
 
     private func setValue(_ newValue: Double, for need: Need) {
         switch need {
-        case .hunger: hunger = clamp(newValue)
+        case .hunger:      hunger      = clamp(newValue)
         case .cleanliness: cleanliness = clamp(newValue)
+        case .happiness:   happiness   = clamp(newValue)
         }
     }
 
     private func persistCurrentState(at date: Date) {
         guard let cat else { return }
-
-        cat.hunger = hunger
+        cat.hunger      = hunger
         cat.cleanliness = cleanliness
-        cat.lastSeen = date
-
+        cat.happiness   = happiness
+        cat.lastSeen    = date
         try? modelContext?.save()
     }
 
