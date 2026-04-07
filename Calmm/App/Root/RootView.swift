@@ -8,25 +8,28 @@ struct RootView: View {
 
     @State private var rootViewModel = RootViewModel()
     @State private var needsViewModel = CatNeedsViewModel()
+    @State private var showingWelcome = true
 
     var body: some View {
         Group {
-            if let cat = cats.first {
+            if showingWelcome {
+                WelcomeView(onFinished: {
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        showingWelcome = false
+                    }
+                })
+            } else if let cat = cats.first {
                 if !cat.hasCompletedOnboarding {
-                    // Show onboarding on first launch
                     OnboardingView(cat: cat)
                 } else {
-                    // Main game
                     ZStack(alignment: .bottom) {
                         currentTabView
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-
                         CustomTabBar(selectedTab: $rootViewModel.selectedTab)
                     }
                     .ignoresSafeArea(edges: .bottom)
                 }
             } else {
-                // Cat not created yet — show nothing while ensureCatExists() runs
                 Color(hex: "FDF6EE").ignoresSafeArea()
             }
         }

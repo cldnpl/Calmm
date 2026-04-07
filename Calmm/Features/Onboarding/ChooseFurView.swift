@@ -15,7 +15,7 @@ struct ChooseFurView: View {
     @State private var selectedFur: FurColor = .orange
 
     var body: some View {
-        VStack(spacing: 32) {
+        VStack(spacing: 28) {
 
             // Title
             VStack(spacing: 8) {
@@ -33,7 +33,7 @@ struct ChooseFurView: View {
                 .interpolation(.none)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 180, height: 180)
+                .frame(width: 260, height: 260)
                 .rotationEffect(.degrees(90))
                 .animation(.spring(response: 0.3, dampingFraction: 0.6), value: selectedFur)
 
@@ -72,15 +72,15 @@ private struct FurOptionButton: View {
                     .interpolation(.none)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 72, height: 72)
+                    .frame(width: 90, height: 90)
                     .rotationEffect(.degrees(90))
-                    .padding(8)
+                    .padding(10)
                     .background(
-                        RoundedRectangle(cornerRadius: 16)
+                        RoundedRectangle(cornerRadius: 20)
                             .fill(isSelected ? Color(hex: "F0997B").opacity(0.15) : Color.white)
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 16)
+                        RoundedRectangle(cornerRadius: 20)
                             .stroke(
                                 isSelected ? Color(hex: "F0997B") : Color(hex: "E0D5CC"),
                                 lineWidth: isSelected ? 2 : 1
@@ -90,7 +90,7 @@ private struct FurOptionButton: View {
                     .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
 
                 Text(fur.displayName)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(isSelected ? Color(hex: "D85A30") : Color(hex: "A08070"))
             }
         }

@@ -25,25 +25,7 @@ enum FurColor: String, Codable, CaseIterable {
     }
 }
 
-// EyeColor is a UI-only helper for presets — NOT stored in SwiftData.
-// CatModel stores eyeColor as a plain hex String instead.
-enum EyeColor: String, CaseIterable {
-    case green  = "4CAF7D"
-    case blue   = "5B9BD5"
-    case yellow = "F0C040"
-    case amber  = "E8873A"
-    case teal   = "3DBDB8"
 
-    var displayName: String {
-        switch self {
-        case .green:  return "Green"
-        case .blue:   return "Blue"
-        case .yellow: return "Yellow"
-        case .amber:  return "Amber"
-        case .teal:   return "Teal"
-        }
-    }
-}
 
 enum AccessoryID: String, Codable, CaseIterable {
     case none
@@ -59,7 +41,6 @@ final class CatModel {
     // Identity
     var name: String
     var furColor: FurColor
-    var eyeColor: String          // hex string e.g. "4CAF7D" — supports presets + custom wheel
 
     // Stats (all 0.0 – 100.0)
     var hunger: Double
@@ -88,11 +69,9 @@ final class CatModel {
     init(
         name: String = "Calmm",
         furColor: FurColor = .orange,
-        eyeColor: String = "4CAF7D"
     ) {
         self.name = name
         self.furColor = furColor
-        self.eyeColor = eyeColor
         self.hunger = 100
         self.happiness = 80
         self.cleanliness = 100

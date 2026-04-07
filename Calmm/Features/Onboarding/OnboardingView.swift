@@ -14,11 +14,10 @@ struct OnboardingView: View {
 
     @Environment(\.modelContext) private var modelContext
     @State private var currentStep = 1
-    private let totalSteps = 3
+    private let totalSteps = 2
 
     var body: some View {
         ZStack {
-            // Background
             Color(hex: "FDF6EE")
                 .ignoresSafeArea()
 
@@ -28,7 +27,10 @@ struct OnboardingView: View {
                     ForEach(1...totalSteps, id: \.self) { step in
                         Circle()
                             .fill(step == currentStep ? Color(hex: "F0997B") : Color(hex: "E0D5CC"))
-                            .frame(width: step == currentStep ? 10 : 7, height: step == currentStep ? 10 : 7)
+                            .frame(
+                                width: step == currentStep ? 10 : 7,
+                                height: step == currentStep ? 10 : 7
+                            )
                             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: currentStep)
                     }
                 }
@@ -36,14 +38,11 @@ struct OnboardingView: View {
 
                 Spacer()
 
-                // Step content
                 Group {
                     switch currentStep {
                     case 1:
                         ChooseFurView(cat: cat, onNext: nextStep)
                     case 2:
-                        ChooseEyeColorView(cat: cat, onNext: nextStep)
-                    case 3:
                         NameYourCatView(cat: cat, onDone: finish)
                     default:
                         EmptyView()
@@ -57,6 +56,7 @@ struct OnboardingView: View {
                 Spacer()
             }
         }
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: currentStep)
     }
 
     private func nextStep() {
@@ -69,4 +69,9 @@ struct OnboardingView: View {
         cat.hasCompletedOnboarding = true
         try? modelContext.save()
     }
+}
+
+#Preview {
+    OnboardingView(cat: CatModel())
+        .modelContainer(for: CatModel.self, inMemory: true)
 }
