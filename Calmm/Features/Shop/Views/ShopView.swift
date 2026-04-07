@@ -113,9 +113,8 @@ struct ShopView: View {
                 )
             }
         }
-        .frame(maxWidth: 340)
-        .padding(.horizontal, 30)
-        .padding(.trailing, 50)
+        .frame(maxWidth: 420)
+        .padding(.horizontal, 20)
     }
 
     private var headerView: some View {
@@ -373,6 +372,7 @@ private struct ShopItemRow: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 66, height: 66)
+                    .rotationEffect(item.kind == .accessory ? .degrees(90) : .degrees(0))
             } else if let symbolName = item.symbolName {
                 Image(systemName: symbolName)
                     .font(.system(size: 100, weight: .bold))

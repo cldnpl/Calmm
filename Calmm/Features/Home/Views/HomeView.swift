@@ -17,7 +17,6 @@ struct HomeView: View {
             if needsViewModel.isFeedingModeActive {
                 feedingTray
                     .padding(.horizontal, 14)
-                    .padding(.bottom, 18)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -194,16 +193,10 @@ private struct FoodDragPreview: View {
     let food: CatFood
 
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(Color.white.opacity(0.94))
-                .frame(width: 84, height: 84)
-
-            Image(food.assetName)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 62, height: 62)
-        }
+        Image(food.assetName)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 74, height: 74)
         .shadow(color: .black.opacity(0.14), radius: 16, y: 8)
     }
 }

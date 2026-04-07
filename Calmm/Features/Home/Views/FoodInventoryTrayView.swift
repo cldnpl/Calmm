@@ -6,21 +6,62 @@ struct FoodInventoryTrayView: View {
     let onDragChanged: (CatFoodInventoryEntry, CGPoint) -> Void
     let onDragEnded: (CatFoodInventoryEntry, CGPoint) -> Void
 
-    var body: some View {
-        VStack(spacing: 12) {
-            Capsule()
-                .fill(Color.white.opacity(0.55))
-                .frame(width: 52, height: 5)
+    @State private var wheelRotation: Double = 0
+    @State private var rotationAtDragStart: Double?
 
-            if foods.isEmpty {
-                Text("No food in inventory")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color(hex: "7D5A4E"))
-                    .padding(.vertical, 20)
-            } else {
-                HStack(spacing: 12) {
-                    ForEach(foods) { entry in
-                        FoodInventoryItemView(
+    private let itemAngleSpacing = 26.0
+
+    var body: some View {
+        GeometryReader { geometry in
+            let size = geometry.size
+            let wheelDiameter = max(size.width * 1.08, 340)
+            let wheelRadius = wheelDiameter / 2
+            let wheelCenter = CGPoint(
+                x: size.width / 2,
+                y: size.height + 28
+            )
+            let itemRadius = wheelRadius - 54
+
+            ZStack {
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color(hex: "FFF8F1").opacity(0.98),
+                                Color(hex: "F7DCCB").opacity(0.9)
+                            ],
+                            center: .center,
+                            startRadius: 18,
+                            endRadius: wheelRadius
+                        )
+                    )
+                    .frame(width: wheelDiameter, height: wheelDiameter)
+                    .position(wheelCenter)
+                    .shadow(color: .black.opacity(0.12), radius: 20, y: 8)
+
+                Circle()
+                    .stroke(Color.white.opacity(0.9), lineWidth: 1)
+                    .frame(width: wheelDiameter, height: wheelDiameter)
+                    .position(wheelCenter)
+
+                Circle()
+                    .stroke(Color(hex: "DFA487").opacity(0.45), lineWidth: 2)
+                    .frame(width: wheelDiameter - 48, height: wheelDiameter - 48)
+                    .position(wheelCenter)
+
+                Color.clear
+                    .contentShape(Rectangle())
+                    .gesture(wheelScrollGesture)
+
+                if foods.isEmpty {
+                    Text("No food in inventory")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color(hex: "7D5A4E"))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .padding(.top, 26)
+                } else {
+                    ForEach(Array(foods.enumerated()), id: \.element.id) { index, entry in
+                        FoodWheelItemView(
                             entry: entry,
                             isHidden: activeFoodID == entry.id,
                             onDragChanged: { point in
@@ -30,58 +71,76 @@ struct FoodInventoryTrayView: View {
                                 onDragEnded(entry, point)
                             }
                         )
+                        .position(
+                            point(
+                                for: index,
+                                count: foods.count,
+                                center: wheelCenter,
+                                radius: itemRadius
+                            )
+                        )
                     }
                 }
             }
+            .padding(.top, 30)
+            .clipped()
         }
-        .padding(.horizontal, 18)
-        .padding(.top, 12)
-        .padding(.bottom, 24)
         .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(Color(hex: "FFF8F1").opacity(0.96))
+        .frame(height: 188)
+    }
+
+    private var wheelScrollGesture: some Gesture {
+        DragGesture(minimumDistance: 6)
+            .onChanged { value in
+                if rotationAtDragStart == nil {
+                    rotationAtDragStart = wheelRotation
+                }
+
+                let baseRotation = rotationAtDragStart ?? wheelRotation
+                wheelRotation = baseRotation + Double(value.translation.width) * 0.22
+            }
+            .onEnded { _ in
+                rotationAtDragStart = nil
+            }
+    }
+
+    private func point(for index: Int, count: Int, center: CGPoint, radius: CGFloat) -> CGPoint {
+        let centeredIndex = Double(index) - Double(count - 1) / 2
+        let angle = -90.0 + (centeredIndex * itemAngleSpacing) + wheelRotation
+        let radians = angle * .pi / 180
+
+        return CGPoint(
+            x: center.x + CGFloat(cos(radians)) * radius,
+            y: center.y + CGFloat(sin(radians)) * radius
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .stroke(Color.white.opacity(0.82), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.12), radius: 16, y: -4)
     }
 }
 
-private struct FoodInventoryItemView: View {
+private struct FoodWheelItemView: View {
     let entry: CatFoodInventoryEntry
     let isHidden: Bool
     let onDragChanged: (CGPoint) -> Void
     let onDragEnded: (CGPoint) -> Void
 
     var body: some View {
-        VStack(spacing: 8) {
-            ZStack(alignment: .topTrailing) {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white)
-                    .frame(width: 76, height: 76)
+        ZStack(alignment: .topTrailing) {
+            Image(entry.food.assetName)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 88, height: 88)
+                .shadow(color: .black.opacity(0.16), radius: 8, y: 4)
 
-                Image(entry.food.assetName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 58, height: 58)
-
-                Text("x\(entry.count)")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color(hex: "D85A30"))
-                    .clipShape(Capsule())
-                    .offset(x: 8, y: -8)
-            }
-
-            Text(entry.food.name)
+            Text("x\(entry.count)")
                 .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(Color(hex: "5A392D"))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color(hex: "D85A30"))
+                .clipShape(Capsule())
+                .offset(x: 8, y: -6)
         }
+        .frame(width: 98, height: 98)
+        .contentShape(Circle())
         .opacity(isHidden ? 0.12 : 1)
         .gesture(
             DragGesture(minimumDistance: 0, coordinateSpace: .named("home-space"))
@@ -103,13 +162,15 @@ private struct FoodInventoryItemView: View {
         FoodInventoryTrayView(
             foods: [
                 CatFoodInventoryEntry(food: CatFoodCatalog.milk, count: 2),
-                CatFoodInventoryEntry(food: CatFoodCatalog.dryfish, count: 1)
+                CatFoodInventoryEntry(food: CatFoodCatalog.dryfish, count: 1),
+                CatFoodInventoryEntry(food: CatFoodCatalog.donut, count: 3),
+                CatFoodInventoryEntry(food: CatFoodCatalog.fishfood, count: 4)
             ],
             activeFoodID: nil,
             onDragChanged: { _, _ in },
             onDragEnded: { _, _ in }
         )
-        .padding()
+        .padding(.bottom, 16)
     }
     .coordinateSpace(name: "home-space")
 }
