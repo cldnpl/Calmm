@@ -5,9 +5,12 @@ struct ShopView: View {
 
     @State private var expandedSection: ShopSection.ID?
     @State private var showInsufficientCoinsAlert = false
+    @State private var pendingFoodPurchase: CatFood?
+    @State private var foodPurchaseQuantity = 1
 
     private let sections: [ShopSection] = [
         ShopSection(
+            id: "clothes",
             title: "CLOTHES",
             subtitle: "Dress up your cat",
             iconName: "tshirt.fill",
@@ -15,6 +18,7 @@ struct ShopView: View {
             items: CatAccessoryCatalog.all.map(ShopItem.init(accessory:))
         ),
         ShopSection(
+            id: "food",
             title: "FOOD",
             subtitle: "Snacks and treats",
             iconName: "carrot.fill",
@@ -56,6 +60,30 @@ struct ShopView: View {
                 }
                 .safeAreaPadding(.top, 12)
                 .safeAreaPadding(.bottom, 116)
+
+                if let pendingFoodPurchase {
+                    Color.black.opacity(0.18)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            self.pendingFoodPurchase = nil
+                        }
+
+                    FoodPurchasePopup(
+                        food: pendingFoodPurchase,
+                        quantity: $foodPurchaseQuantity,
+                        maxQuantity: maxSelectableQuantity(for: pendingFoodPurchase),
+                        canAffordAtLeastOne: needsViewModel.hasInfiniteCoins || needsViewModel.coinCount >= pendingFoodPurchase.price,
+                        onCancel: {
+                            self.pendingFoodPurchase = nil
+                        },
+                        onConfirm: {
+                            handleFoodPurchaseConfirmation(for: pendingFoodPurchase)
+                        }
+                    )
+                    .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
+                    .padding(.horizontal, 28)
+                    .zIndex(1)
+                }
             }
         }
         .alert("You don't have enough coins", isPresented: $showInsufficientCoinsAlert) {
@@ -138,9 +166,9 @@ struct ShopView: View {
     private func handleTap(on item: ShopItem) {
         switch item.kind {
         case .food:
-            if !needsViewModel.purchaseFood(id: item.id, price: item.price) {
-                showInsufficientCoinsAlert = true
-            }
+            guard let food = CatFoodCatalog.food(for: item.id) else { return }
+            foodPurchaseQuantity = 1
+            pendingFoodPurchase = food
         case .accessory:
             if needsViewModel.isAccessoryOwned(item.id) {
                 needsViewModel.equipAccessory(id: item.id)
@@ -186,6 +214,24 @@ struct ShopView: View {
                 statusText: nil
             )
         }
+    }
+
+    private func handleFoodPurchaseConfirmation(for food: CatFood) {
+        if !needsViewModel.purchaseFood(id: food.id, price: food.price, quantity: foodPurchaseQuantity) {
+            showInsufficientCoinsAlert = true
+            return
+        }
+
+        pendingFoodPurchase = nil
+    }
+
+    private func maxSelectableQuantity(for food: CatFood) -> Int {
+        if needsViewModel.hasInfiniteCoins {
+            return 99
+        }
+
+        let affordableCount = needsViewModel.coinCount / max(food.price, 1)
+        return max(1, min(99, affordableCount))
     }
 }
 
@@ -337,7 +383,7 @@ private struct ShopItemRow: View {
 }
 
 private struct ShopSection: Identifiable {
-    let id = UUID()
+    let id: String
     let title: String
     let subtitle: String
     let iconName: String
@@ -392,6 +438,117 @@ private struct ShopItemActionConfiguration {
     let statusText: String?
 }
 
+private struct FoodPurchasePopup: View {
+    let food: CatFood
+    @Binding var quantity: Int
+    let maxQuantity: Int
+    let canAffordAtLeastOne: Bool
+    let onCancel: () -> Void
+    let onConfirm: () -> Void
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Text("How many do you want to buy?")
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(Color(hex: "513329"))
+                .multilineTextAlignment(.center)
+
+            Text(food.name)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color(hex: "7D5A4E"))
+
+            HStack(spacing: 16) {
+                quantityButton(
+                    symbol: "minus",
+                    isDisabled: quantity <= 1,
+                    action: {
+                        quantity = max(1, quantity - 1)
+                    }
+                )
+
+                VStack(spacing: 4) {
+                    Text("\(quantity)")
+                        .font(.system(size: 34, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color(hex: "513329"))
+
+                    Text("selected")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color(hex: "866458"))
+                }
+                .frame(minWidth: 92)
+
+                quantityButton(
+                    symbol: "plus",
+                    isDisabled: quantity >= maxQuantity,
+                    action: {
+                        quantity = min(maxQuantity, quantity + 1)
+                    }
+                )
+            }
+            .padding(.vertical, 2)
+
+            Text("1 - \(maxQuantity)")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Color(hex: "866458"))
+
+            if !canAffordAtLeastOne {
+                Text("You don't have enough coins.")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color(hex: "D85A30"))
+            }
+
+            HStack(spacing: 10) {
+                Button("Cancel", action: onCancel)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color(hex: "7D5A4E"))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color(hex: "F4DED5"))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                Button("Buy", action: onConfirm)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color(hex: "E4A64B"))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .disabled(!canAffordAtLeastOne)
+                    .opacity(canAffordAtLeastOne ? 1 : 0.55)
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: 290)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color(hex: "FFF8F1"))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.white.opacity(0.9), lineWidth: 1)
+        )
+        .padding(.trailing,50)
+        .shadow(color: .black.opacity(0.18), radius: 20, y: 8)
+    }
+
+    @ViewBuilder
+    private func quantityButton(symbol: String, isDisabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 22, weight: .black))
+                .foregroundStyle(isDisabled ? Color(hex: "B79A8F") : .white)
+                .frame(width: 52, height: 52)
+                .background(
+                    Circle()
+                        .fill(isDisabled ? Color(hex: "E9D6CF") : Color(hex: "D85A30"))
+                )
+        }
+        .buttonStyle(.plain)
+        .buttonRepeatBehavior(.enabled)
+        .disabled(isDisabled)
+    }
+}
+
 #Preview {
     let needsViewModel = CatNeedsViewModel()
     needsViewModel.loadPreview(hunger: 76, cleanliness: 88)
@@ -407,6 +564,7 @@ private struct ShopItemActionConfiguration {
 
         ShopExpandableSection(
             section: ShopSection(
+                id: "clothes-preview",
                 title: "CLOTHES",
                 subtitle: "Dress up your cat",
                 iconName: "tshirt.fill",

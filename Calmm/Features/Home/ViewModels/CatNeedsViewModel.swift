@@ -82,11 +82,14 @@ final class CatNeedsViewModel {
     }
 
     @discardableResult
-    func purchaseFood(id: String, price: Int) -> Bool {
+    func purchaseFood(id: String, price: Int, quantity: Int = 1) -> Bool {
         guard CatFoodCatalog.food(for: id) != nil else { return false }
-        guard spendCoinsIfPossible(price) else { return false }
+        guard quantity > 0 else { return false }
 
-        foodInventory[id, default: 0] += 1
+        let totalPrice = price * quantity
+        guard spendCoinsIfPossible(totalPrice) else { return false }
+
+        foodInventory[id, default: 0] += quantity
         persistCurrentState(at: Date())
         return true
     }
@@ -102,6 +105,7 @@ final class CatNeedsViewModel {
         }
 
         startRestoration(for: .hunger, amount: food.hungerRestoreAmount)
+        AudioManager.shared.playEatingSound()
         persistCurrentState(at: Date())
         return true
     }
