@@ -12,24 +12,14 @@ struct ShopView: View {
             subtitle: "Dress up your cat",
             iconName: "tshirt.fill",
             accentColorHex: "D97B5D",
-            items: [
-                ShopItem(name: "Cloth 1", price: 120, symbolName: "tshirt.fill"),
-                ShopItem(name: "Cloth 2", price: 180, symbolName: "bag.fill"),
-                ShopItem(name: "Cloth 3", price: 220, symbolName: "tag.fill"),
-                ShopItem(name: "Cloth 4", price: 260, symbolName: "tag.fill")
-            ]
+            items: CatAccessoryCatalog.all.map(ShopItem.init(accessory:))
         ),
         ShopSection(
             title: "FOOD",
             subtitle: "Snacks and treats",
             iconName: "carrot.fill",
             accentColorHex: "E4A64B",
-            items: [
-                ShopItem(name: "Milk", price: 20, assetName: "Milk"),
-                ShopItem(name: "Donut", price: 35, assetName: "Donut"),
-                ShopItem(name: "Dryfish", price: 45, assetName: "Dryfish"),
-                ShopItem(name: "Fishfood", price: 30, assetName: "Fishfood")
-            ]
+            items: CatFoodCatalog.all.map(ShopItem.init(food:))
         )
     ]
 
@@ -68,7 +58,7 @@ struct ShopView: View {
                 .safeAreaPadding(.bottom, 116)
             }
         }
-        .alert("non hai abbastanza monete", isPresented: $showInsufficientCoinsAlert) {
+        .alert("You don't have enough coins", isPresented: $showInsufficientCoinsAlert) {
             Button("OK", role: .cancel) {}
         }
     }
@@ -81,8 +71,11 @@ struct ShopView: View {
                 ShopExpandableSection(
                     section: section,
                     isExpanded: expandedSection == section.id,
-                    onBuy: { item in
-                        handlePurchase(of: item)
+                    actionConfiguration: { item in
+                        actionConfiguration(for: item)
+                    },
+                    onTapItem: { item in
+                        handleTap(on: item)
                     },
                     onToggle: {
                         withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
@@ -126,7 +119,7 @@ struct ShopView: View {
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(Color(hex: "E4A64B"))
 
-            Text("\(needsViewModel.coinCount) coins")
+            Text(needsViewModel.coinCountText)
                 .font(.system(size: 15, weight: .bold, design: .rounded))
                 .foregroundStyle(Color(hex: "5A392D"))
         }
@@ -142,9 +135,56 @@ struct ShopView: View {
         )
     }
 
-    private func handlePurchase(of item: ShopItem) {
-        if !needsViewModel.spendCoins(item.price) {
-            showInsufficientCoinsAlert = true
+    private func handleTap(on item: ShopItem) {
+        switch item.kind {
+        case .food:
+            if !needsViewModel.purchaseFood(id: item.id, price: item.price) {
+                showInsufficientCoinsAlert = true
+            }
+        case .accessory:
+            if needsViewModel.isAccessoryOwned(item.id) {
+                needsViewModel.equipAccessory(id: item.id)
+                return
+            }
+
+            if !needsViewModel.purchaseAccessory(id: item.id, price: item.price) {
+                showInsufficientCoinsAlert = true
+            }
+        }
+    }
+
+    private func actionConfiguration(for item: ShopItem) -> ShopItemActionConfiguration {
+        switch item.kind {
+        case .food:
+            return ShopItemActionConfiguration(
+                title: "Buy",
+                isDisabled: false,
+                statusText: needsViewModel.foodCount(for: item.id) > 0
+                    ? "You have \(needsViewModel.foodCount(for: item.id))"
+                    : nil
+            )
+        case .accessory:
+            if needsViewModel.isAccessoryEquipped(item.id) {
+                return ShopItemActionConfiguration(
+                    title: "Wearing",
+                    isDisabled: true,
+                    statusText: "Your cat is wearing it"
+                )
+            }
+  
+            if needsViewModel.isAccessoryOwned(item.id) {
+                return ShopItemActionConfiguration(
+                    title: "Wear",
+                    isDisabled: false,
+                    statusText: "Purchased"
+                )
+            }
+
+            return ShopItemActionConfiguration(
+                title: "Buy",
+                isDisabled: false,
+                statusText: nil
+            )
         }
     }
 }
@@ -152,7 +192,8 @@ struct ShopView: View {
 private struct ShopExpandableSection: View {
     let section: ShopSection
     let isExpanded: Bool
-    let onBuy: (ShopItem) -> Void
+    let actionConfiguration: (ShopItem) -> ShopItemActionConfiguration
+    let onTapItem: (ShopItem) -> Void
     let onToggle: () -> Void
 
     var body: some View {
@@ -201,8 +242,9 @@ private struct ShopExpandableSection: View {
                         ShopItemRow(
                             item: item,
                             accentColorHex: section.accentColorHex,
-                            onBuy: {
-                                onBuy(item)
+                            action: actionConfiguration(item),
+                            onTap: {
+                                onTapItem(item)
                             }
                         )
                     }
@@ -228,7 +270,8 @@ private struct ShopExpandableSection: View {
 private struct ShopItemRow: View {
     let item: ShopItem
     let accentColorHex: String
-    let onBuy: () -> Void
+    let action: ShopItemActionConfiguration
+    let onTap: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
@@ -242,20 +285,27 @@ private struct ShopItemRow: View {
                 Text("\(item.price) coins")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Color(hex: "8A6A5B"))
+
+                if let statusText = action.statusText {
+                    Text(statusText)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color(hex: accentColorHex))
+                }
             }
 
             Spacer()
 
-            Button(action: onBuy) {
-                Text("Buy")
+            Button(action: onTap) {
+                Text(action.title)
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(action.isDisabled ? Color(hex: "8A6A5B") : .white)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 9)
-                    .background(Color(hex: accentColorHex))
+                    .background(action.isDisabled ? Color(hex: "F4DED5") : Color(hex: accentColorHex))
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
+            .disabled(action.isDisabled)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
@@ -276,7 +326,7 @@ private struct ShopItemRow: View {
                 Image(assetName)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 90, height: 90)
+                    .frame(width: 66, height: 66)
             } else if let symbolName = item.symbolName {
                 Image(systemName: symbolName)
                     .font(.system(size: 100, weight: .bold))
@@ -296,11 +346,50 @@ private struct ShopSection: Identifiable {
 }
 
 private struct ShopItem: Identifiable {
-    let id = UUID()
+    let id: String
     let name: String
     let price: Int
     var assetName: String?
     var symbolName: String?
+    let kind: Kind
+
+    enum Kind {
+        case food
+        case accessory
+    }
+
+    init(id: String, name: String, price: Int, assetName: String? = nil, symbolName: String? = nil, kind: Kind) {
+        self.id = id
+        self.name = name
+        self.price = price
+        self.assetName = assetName
+        self.symbolName = symbolName
+        self.kind = kind
+    }
+
+    init(accessory: CatAccessory) {
+        self.id = accessory.id
+        self.name = accessory.name
+        self.price = accessory.price
+        self.assetName = accessory.assetName
+        self.symbolName = nil
+        self.kind = .accessory
+    }
+
+    init(food: CatFood) {
+        self.id = food.id
+        self.name = food.name
+        self.price = food.price
+        self.assetName = food.assetName
+        self.symbolName = nil
+        self.kind = .food
+    }
+}
+
+private struct ShopItemActionConfiguration {
+    let title: String
+    let isDisabled: Bool
+    let statusText: String?
 }
 
 #Preview {
@@ -323,12 +412,15 @@ private struct ShopItem: Identifiable {
                 iconName: "tshirt.fill",
                 accentColorHex: "D97B5D",
                 items: [
-                    ShopItem(name: "Cloth 1", price: 120, symbolName: "tshirt.fill"),
-                    ShopItem(name: "Cloth 2", price: 180, symbolName: "bag.fill")
+                    ShopItem(accessory: CatAccessoryCatalog.frogHat),
+                    ShopItem(accessory: CatAccessoryCatalog.witchHat)
                 ]
             ),
             isExpanded: true,
-            onBuy: { _ in },
+            actionConfiguration: { _ in
+                ShopItemActionConfiguration(title: "Wear", isDisabled: false, statusText: "Purchased")
+            },
+            onTapItem: { _ in },
             onToggle: {}
         )
         .padding(20)
@@ -341,9 +433,10 @@ private struct ShopItem: Identifiable {
             .ignoresSafeArea()
 
         ShopItemRow(
-            item: ShopItem(name: "Milk", price: 20, assetName: "Milk"),
+            item: ShopItem(id: "milk", name: "Milk", price: 20, assetName: "Milk", kind: .food),
             accentColorHex: "E4A64B",
-            onBuy: {}
+            action: ShopItemActionConfiguration(title: "Buy", isDisabled: false, statusText: nil),
+            onTap: {}
         )
         .padding(20)
     }

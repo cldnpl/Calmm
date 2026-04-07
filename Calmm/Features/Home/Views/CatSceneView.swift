@@ -2,7 +2,10 @@ import SwiftUI
 
 struct CatSceneView<CatGesture: Gesture>: View {
     let imageName: String
+    let accessoryImageName: String?
     let catGesture: CatGesture
+    let isInteractionEnabled: Bool
+    let onCatFrameChange: (CGRect) -> Void
 
     var body: some View {
         GeometryReader { geometry in
@@ -16,15 +19,41 @@ struct CatSceneView<CatGesture: Gesture>: View {
                     .frame(width: geometry.size.width, height: geometry.size.height)
                     .clipped()
 
-                Image(imageName)
-                    .interpolation(.none)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: catSize, height: catSize)
-                    .rotationEffect(.degrees(90))
-                    .offset(y: catVerticalOffset)
-                    .contentShape(Rectangle())
-                    .gesture(catGesture)
+                ZStack {
+                    Image(imageName)
+                        .interpolation(.none)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: catSize, height: catSize)
+                        .rotationEffect(.degrees(90))
+
+                    if let accessoryImageName {
+                        Image(accessoryImageName)
+                            .interpolation(.none)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: catSize, height: catSize)
+                            .rotationEffect(.degrees(90))
+                            .allowsHitTesting(false)
+                    }
+                }
+                .offset(y: catVerticalOffset)
+                .background {
+                    GeometryReader { proxy in
+                        let frame = proxy.frame(in: .named("home-space"))
+
+                        Color.clear
+                            .onAppear {
+                                onCatFrameChange(frame)
+                            }
+                            .onChange(of: frame) { _, newFrame in
+                                onCatFrameChange(newFrame)
+                            }
+                    }
+                }
+                .contentShape(Rectangle())
+                .gesture(catGesture)
+                .allowsHitTesting(isInteractionEnabled)
             }
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
         }
@@ -34,6 +63,9 @@ struct CatSceneView<CatGesture: Gesture>: View {
 #Preview {
     CatSceneView(
         imageName: "TailUp",
-        catGesture: TapGesture()
+        accessoryImageName: "Froghat",
+        catGesture: TapGesture(),
+        isInteractionEnabled: true,
+        onCatFrameChange: { _ in }
     )
 }

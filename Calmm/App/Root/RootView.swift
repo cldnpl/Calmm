@@ -14,7 +14,9 @@ struct RootView: View {
             currentTabView
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            CustomTabBar(selectedTab: $rootViewModel.selectedTab)
+            if !shouldHideTabBar {
+                CustomTabBar(selectedTab: $rootViewModel.selectedTab)
+            }
         }
         .environment(needsViewModel)
         .ignoresSafeArea(edges: .bottom)
@@ -33,6 +35,10 @@ struct RootView: View {
 
             needsViewModel.handleScenePhase(newPhase)
         }
+    }
+
+    private var shouldHideTabBar: Bool {
+        rootViewModel.selectedTab == .home && needsViewModel.isFeedingModeActive
     }
 
     @ViewBuilder

@@ -12,6 +12,11 @@ final class CatModel {
     var level: Int
     var coins: Int
     var lastSeen: Date
+    var ownedAccessoryIDsRaw: String?
+    var equippedAccessoryID: String?
+    var hasGrantedStarterCoins: Bool?
+    var foodInventoryRaw: String?
+    var hasGrantedStarterFood: Bool?
 
     init(name: String = "Calmm") {
         self.name = name
@@ -21,7 +26,12 @@ final class CatModel {
         self.energy = 100
         self.xp = 0
         self.level = 1
-        self.coins = 50
+        self.coins = 100
         self.lastSeen = Date()
+        self.ownedAccessoryIDsRaw = ""
+        self.equippedAccessoryID = nil
+        self.hasGrantedStarterCoins = true
+        self.foodInventoryRaw = CatFoodCatalog.rawInventory(from: CatFoodCatalog.starterInventory)
+        self.hasGrantedStarterFood = true
     }
 }
