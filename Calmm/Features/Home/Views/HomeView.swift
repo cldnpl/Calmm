@@ -60,7 +60,7 @@ struct HomeView: View {
         ZStack(alignment: .bottom) {
             CatSceneView(
                 imageName: viewModel.currentImageName,
-                accessoryImageName: needsViewModel.equippedAccessory?.assetName,
+                accessoryImageNames: needsViewModel.equippedAccessoryAssetNames,
                 catGesture: catGesture,
                 isInteractionEnabled: !needsViewModel.isFeedingModeActive,
                 onCatFrameChange: { frame in

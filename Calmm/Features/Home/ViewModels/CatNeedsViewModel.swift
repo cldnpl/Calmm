@@ -13,7 +13,7 @@ final class CatNeedsViewModel {
     private(set) var cleanliness: Double = 100
     private(set) var coins: Int = 0
     private(set) var ownedAccessoryIDs: Set<String> = []
-    private(set) var equippedAccessoryID: String?
+    private(set) var equippedAccessoryIDs: Set<String> = []
     private(set) var foodInventory: [String: Int] = [:]
     var isFeedingModeActive = false
 
@@ -37,8 +37,19 @@ final class CatNeedsViewModel {
     var coinCountText: String {
         hasInfiniteCoins ? "∞ coins" : "\(coinCount) coins"
     }
-    var equippedAccessory: CatAccessory? {
-        CatAccessoryCatalog.accessory(for: equippedAccessoryID)
+    var equippedAccessories: [CatAccessory] {
+        equippedAccessoryIDs
+            .compactMap { CatAccessoryCatalog.accessory(for: $0) }
+            .sorted {
+                if $0.slot.renderOrder == $1.slot.renderOrder {
+                    return $0.name < $1.name
+                }
+
+                return $0.slot.renderOrder < $1.slot.renderOrder
+            }
+    }
+    var equippedAccessoryAssetNames: [String] {
+        equippedAccessories.map(\.assetName)
     }
     var availableFoods: [CatFoodInventoryEntry] {
         CatFoodCatalog.all.compactMap { food in
@@ -67,9 +78,14 @@ final class CatNeedsViewModel {
 
     func equipAccessory(id: String) {
         guard ownedAccessoryIDs.contains(id) else { return }
-        guard equippedAccessoryID != id else { return }
+        guard let accessory = CatAccessoryCatalog.accessory(for: id) else { return }
+        guard !equippedAccessoryIDs.contains(id) else { return }
 
-        equippedAccessoryID = id
+        equippedAccessoryIDs = Set(equippedAccessoryIDs.filter { equippedID in
+            guard let equippedAccessory = CatAccessoryCatalog.accessory(for: equippedID) else { return false }
+            return equippedAccessory.slot != accessory.slot
+        })
+        equippedAccessoryIDs.insert(id)
         persistCurrentState(at: Date())
     }
 
@@ -78,7 +94,7 @@ final class CatNeedsViewModel {
     }
 
     func isAccessoryEquipped(_ id: String) -> Bool {
-        equippedAccessoryID == id
+        equippedAccessoryIDs.contains(id)
     }
 
     @discardableResult
@@ -161,7 +177,7 @@ final class CatNeedsViewModel {
         self.cleanliness = clamp(cleanliness)
         self.coins = 100
         self.ownedAccessoryIDs = []
-        self.equippedAccessoryID = nil
+        self.equippedAccessoryIDs = []
         self.foodInventory = CatFoodCatalog.starterInventory
         self.isFeedingModeActive = false
     }
@@ -188,9 +204,10 @@ final class CatNeedsViewModel {
         coins = cat.coins
         ownedAccessoryIDs = accessoryIDs(from: cat.ownedAccessoryIDsRaw)
         foodInventory = CatFoodCatalog.inventory(from: cat.foodInventoryRaw)
-        equippedAccessoryID = ownedAccessoryIDs.contains(cat.equippedAccessoryID ?? "")
-            ? cat.equippedAccessoryID
-            : nil
+        equippedAccessoryIDs = normalizedEquippedAccessoryIDs(
+            from: equippedAccessoryIDs(from: cat),
+            owned: ownedAccessoryIDs
+        )
         persistCurrentState(at: now)
     }
 
@@ -272,9 +289,9 @@ final class CatNeedsViewModel {
         cat.coins = coins
         cat.lastSeen = date
         cat.ownedAccessoryIDsRaw = rawAccessoryIDs(from: ownedAccessoryIDs)
-        cat.equippedAccessoryID = ownedAccessoryIDs.contains(equippedAccessoryID ?? "")
-            ? equippedAccessoryID
-            : nil
+        let persistedEquippedIDs = normalizedEquippedAccessoryIDs(from: equippedAccessoryIDs, owned: ownedAccessoryIDs)
+        cat.equippedAccessoryIDsRaw = rawAccessoryIDs(from: persistedEquippedIDs)
+        cat.equippedAccessoryID = persistedEquippedIDs.sorted().first
         cat.foodInventoryRaw = CatFoodCatalog.rawInventory(from: foodInventory)
         cat.hasGrantedStarterCoins = true
         cat.hasGrantedStarterFood = true
@@ -301,6 +318,27 @@ final class CatNeedsViewModel {
 
     private func rawAccessoryIDs(from ids: Set<String>) -> String {
         ids.sorted().joined(separator: ",")
+    }
+
+    private func equippedAccessoryIDs(from cat: CatModel) -> Set<String> {
+        if let rawValue = cat.equippedAccessoryIDsRaw {
+            return accessoryIDs(from: rawValue)
+        }
+
+        guard let legacyEquippedID = cat.equippedAccessoryID else { return [] }
+        return [legacyEquippedID]
+    }
+
+    private func normalizedEquippedAccessoryIDs(from ids: Set<String>, owned: Set<String>) -> Set<String> {
+        var equippedBySlot: [CatAccessorySlot: String] = [:]
+
+        for accessory in CatAccessoryCatalog.all where ids.contains(accessory.id) && owned.contains(accessory.id) {
+            if equippedBySlot[accessory.slot] == nil {
+                equippedBySlot[accessory.slot] = accessory.id
+            }
+        }
+
+        return Set(equippedBySlot.values)
     }
 
     private func mergedFoodInventory(_ lhs: [String: Int], with rhs: [String: Int]) -> [String: Int] {

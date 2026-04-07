@@ -14,6 +14,7 @@ final class CatModel {
     var lastSeen: Date
     var ownedAccessoryIDsRaw: String?
     var equippedAccessoryID: String?
+    var equippedAccessoryIDsRaw: String?
     var hasGrantedStarterCoins: Bool?
     var foodInventoryRaw: String?
     var hasGrantedStarterFood: Bool?
@@ -30,6 +31,7 @@ final class CatModel {
         self.lastSeen = Date()
         self.ownedAccessoryIDsRaw = ""
         self.equippedAccessoryID = nil
+        self.equippedAccessoryIDsRaw = ""
         self.hasGrantedStarterCoins = true
         self.foodInventoryRaw = CatFoodCatalog.rawInventory(from: CatFoodCatalog.starterInventory)
         self.hasGrantedStarterFood = true

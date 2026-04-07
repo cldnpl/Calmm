@@ -372,12 +372,23 @@ private struct ShopItemRow: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 66, height: 66)
-                    .rotationEffect(item.kind == .accessory ? .degrees(90) : .degrees(0))
+                    .rotationEffect(rotationAngle(for: item))
             } else if let symbolName = item.symbolName {
                 Image(systemName: symbolName)
                     .font(.system(size: 100, weight: .bold))
                     .foregroundStyle(Color(hex: accentColorHex))
             }
+        }
+    }
+
+    private func rotationAngle(for item: ShopItem) -> Angle {
+        guard item.kind == .accessory else { return .degrees(0) }
+
+        switch item.assetName {
+        case "Froghat", "Witchhat", "Jacketgrif", "Jackethuf", "Jacketrew", "Jacketsly", "Glassblue", "Glassgreen", "Glassred", "Glassyellow":
+            return .degrees(90)
+        default:
+            return .degrees(0)
         }
     }
 }

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct CatSceneView<CatGesture: Gesture>: View {
     let imageName: String
-    let accessoryImageName: String?
+    let accessoryImageNames: [String]
     let catGesture: CatGesture
     let isInteractionEnabled: Bool
     let onCatFrameChange: (CGRect) -> Void
@@ -27,7 +27,7 @@ struct CatSceneView<CatGesture: Gesture>: View {
                         .frame(width: catSize, height: catSize)
                         .rotationEffect(.degrees(90))
 
-                    if let accessoryImageName {
+                    ForEach(Array(accessoryImageNames.enumerated()), id: \.offset) { _, accessoryImageName in
                         Image(accessoryImageName)
                             .interpolation(.none)
                             .resizable()
@@ -63,7 +63,7 @@ struct CatSceneView<CatGesture: Gesture>: View {
 #Preview {
     CatSceneView(
         imageName: "TailUp",
-        accessoryImageName: "Froghat",
+        accessoryImageNames: ["Jacketgrif", "Glassblue", "Froghat"],
         catGesture: TapGesture(),
         isInteractionEnabled: true,
         onCatFrameChange: { _ in }
