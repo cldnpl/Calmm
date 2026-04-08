@@ -5,7 +5,6 @@
 //  Created by Raffaele Barra on 07/04/2026.
 //
 
-
 import SwiftUI
 import SpriteKit
 import SwiftData
@@ -71,6 +70,7 @@ struct WhackAMouseView: View {
         ZStack {
             Color(hex: "FDF6EE").ignoresSafeArea()
             VStack(spacing: 0) {
+                // X button
                 HStack {
                     Spacer()
                     Button(action: { dismiss() }) {
@@ -84,8 +84,24 @@ struct WhackAMouseView: View {
                     .padding(.top, 56)
                     .padding(.trailing, 24)
                 }
+
                 Spacer()
-                Text("🐭").font(.system(size: 80))
+
+                // Mouse asset as hero — falls back to SF symbol if asset missing
+                Group {
+                    if UIImage(named: "Mouse") != nil {
+                        Image("Mouse")
+                            .interpolation(.none)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 100, height: 100)
+                    } else {
+                        Image(systemName: "computermouse.fill")
+                            .font(.system(size: 72))
+                            .foregroundStyle(Color(hex: "5DCAA5"))
+                    }
+                }
+
                 VStack(spacing: 10) {
                     Text("Whack-a-Mouse!")
                         .font(.system(size: 32, weight: .bold, design: .rounded))
@@ -96,20 +112,40 @@ struct WhackAMouseView: View {
                         .multilineTextAlignment(.center)
                 }
                 .padding(.top, 16)
+
+                // Lives preview
                 HStack(spacing: 6) {
                     ForEach(0..<maxLives, id: \.self) { _ in
-                        Text("🐾").font(.system(size: 24))
+                        Image(systemName: "pawprint.fill")
+                            .font(.system(size: 22))
+                            .foregroundStyle(Color(hex: "F0997B"))
                     }
                 }
                 .padding(.top, 24)
-                VStack(spacing: 8) {
-                    tipRow(icon: "🔥", text: "Hit 3 in a row for a combo bonus")
-                    tipRow(icon: "⚡️", text: "Mice get faster as your score grows")
-                    tipRow(icon: "🐾", text: "Miss 3 mice and it's game over")
+
+                // Tips
+                VStack(spacing: 10) {
+                    tipRow(
+                        systemImage: "flame.fill",
+                        color: Color(hex: "D85A30"),
+                        text: "Hit 3 in a row for a combo bonus"
+                    )
+                    tipRow(
+                        systemImage: "bolt.fill",
+                        color: Color(hex: "EF9F27"),
+                        text: "Mice get faster as time goes on"
+                    )
+                    tipRow(
+                        systemImage: "pawprint.fill",
+                        color: Color(hex: "F0997B"),
+                        text: "Miss 3 mice and it's game over"
+                    )
                 }
                 .padding(.top, 28)
                 .padding(.horizontal, 40)
+
                 Spacer()
+
                 Button(action: startGame) {
                     Text(!hasPlayedBefore ? "Start tutorial" : "Play!")
                         .font(.system(size: 20, weight: .bold))
@@ -125,10 +161,15 @@ struct WhackAMouseView: View {
         }
     }
 
-    private func tipRow(icon: String, text: String) -> some View {
+    private func tipRow(systemImage: String, color: Color, text: String) -> some View {
         HStack(spacing: 10) {
-            Text(icon).font(.system(size: 18))
-            Text(text).font(.system(size: 14)).foregroundStyle(Color(hex: "A08070"))
+            Image(systemName: systemImage)
+                .font(.system(size: 16))
+                .foregroundStyle(color)
+                .frame(width: 24)
+            Text(text)
+                .font(.system(size: 14))
+                .foregroundStyle(Color(hex: "A08070"))
             Spacer()
         }
     }
@@ -137,21 +178,22 @@ struct WhackAMouseView: View {
 
     private var gameScreen: some View {
         ZStack(alignment: .top) {
-
-            // SpriteKit — fullscreen, receives ALL touches
             if let gameScene {
                 SpriteView(scene: gameScene)
                     .ignoresSafeArea()
             }
 
-            // SwiftUI HUD — allowsHitTesting(false) so touches pass through to SpriteKit
             VStack(spacing: 0) {
+                // HUD
                 HStack(alignment: .center) {
-                    // Lives
+                    // Lives as pawprint SF symbols
                     HStack(spacing: 4) {
                         ForEach(0..<maxLives, id: \.self) { i in
-                            Text(i < lives ? "🐾" : "🩶")
-                                .font(.system(size: 26))
+                            Image(systemName: i < lives ? "pawprint.fill" : "pawprint")
+                                .font(.system(size: 22))
+                                .foregroundStyle(i < lives
+                                    ? Color(hex: "F0997B")
+                                    : Color.white.opacity(0.35))
                                 .scaleEffect(i < lives ? 1.0 : 0.8)
                                 .animation(.spring(response: 0.3, dampingFraction: 0.5), value: lives)
                         }
@@ -170,7 +212,7 @@ struct WhackAMouseView: View {
 
                     Spacer()
 
-                    // Pause — this DOES need hit testing
+                    // Pause
                     Button(action: pauseGame) {
                         Image(systemName: "pause.fill")
                             .font(.system(size: 16, weight: .bold))
@@ -182,9 +224,9 @@ struct WhackAMouseView: View {
                 }
                 .padding(.top, 56)
                 .padding(.horizontal, 20)
-                .allowsHitTesting(true) // HUD row keeps hit testing for pause button
+                .allowsHitTesting(true)
 
-                // Cat cameo area — no hit testing needed
+                // Cat cameo area
                 ZStack {
                     if showCatCameo {
                         HStack(alignment: .bottom, spacing: 8) {
@@ -216,32 +258,32 @@ struct WhackAMouseView: View {
                     }
                 }
                 .frame(height: 90)
-                .allowsHitTesting(false) // cat cameo passes touches through
+                .allowsHitTesting(false)
                 .animation(.spring(response: 0.4, dampingFraction: 0.7), value: showCatCameo)
 
                 Spacer()
             }
 
-            // Tutorial text overlay — purely visual, passes ALL touches to SpriteKit
+            // Tutorial text overlay — passes touches through
             if showTutorial {
                 tutorialOverlay
-                    .allowsHitTesting(false) // ← KEY FIX: touches go through to SpriteKit
+                    .allowsHitTesting(false)
                     .transition(.opacity)
                     .animation(.easeInOut(duration: 0.3), value: tutorialStep)
             }
 
-            // Pause menu — this DOES block touches (it's a modal)
-            if showPauseMenu {
-                pauseMenuOverlay
-                    .transition(.opacity)
-                    .animation(.easeInOut(duration: 0.2), value: showPauseMenu)
-            }
-
-            // Tutorial action cards — shown on top of everything, DO need hit testing
+            // Tutorial cards — need hit testing
             if showTutorial && tutorialNeedsCard {
                 tutorialCardOverlay
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     .animation(.spring(response: 0.4, dampingFraction: 0.8), value: tutorialStep)
+            }
+
+            // Pause menu
+            if showPauseMenu {
+                pauseMenuOverlay
+                    .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.2), value: showPauseMenu)
             }
         }
     }
@@ -252,7 +294,6 @@ struct WhackAMouseView: View {
         tutorialStep == .step2_waited || tutorialStep == .step3_ready
     }
 
-    // Pure visual overlay — no buttons, passes touches through
     @ViewBuilder
     private var tutorialOverlay: some View {
         ZStack {
@@ -263,7 +304,7 @@ struct WhackAMouseView: View {
                 VStack(spacing: 12) {
                     Spacer()
                     PulsingArrow()
-                    Text("Tap the mouse! 👆")
+                    Text("Tap the mouse!")
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                         .shadow(color: .black.opacity(0.5), radius: 4)
@@ -273,7 +314,7 @@ struct WhackAMouseView: View {
             case .step2_missDemo:
                 VStack {
                     Spacer()
-                    Text("Watch what happens\nif you miss... 👀")
+                    Text("Watch what happens\nif you miss...")
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                         .multilineTextAlignment(.center)
@@ -288,7 +329,6 @@ struct WhackAMouseView: View {
         }
     }
 
-    // Cards with buttons — separate layer that CAN be tapped
     @ViewBuilder
     private var tutorialCardOverlay: some View {
         ZStack {
@@ -297,7 +337,8 @@ struct WhackAMouseView: View {
             switch tutorialStep {
             case .step2_waited:
                 tutorialCard(
-                    emoji: "🐾",
+                    systemImage: "pawprint.fill",
+                    iconColor: Color(hex: "F0997B"),
                     title: "You lost a life!",
                     body: "Every mouse that escapes costs you a paw. Lose all 3 and it's game over!",
                     buttonLabel: "Got it!",
@@ -305,10 +346,11 @@ struct WhackAMouseView: View {
                 )
             case .step3_ready:
                 tutorialCard(
-                    emoji: "⚡️",
+                    systemImage: "bolt.fill",
+                    iconColor: Color(hex: "EF9F27"),
                     title: "Speed matters!",
-                    body: "As your score grows the mice appear faster and faster. Stay sharp!",
-                    buttonLabel: "Let's go! 🐭",
+                    body: "As time goes on the mice appear faster and faster. Stay sharp!",
+                    buttonLabel: "Let's go!",
                     action: finishTutorial
                 )
             default:
@@ -317,9 +359,12 @@ struct WhackAMouseView: View {
         }
     }
 
-    private func tutorialCard(emoji: String, title: String, body: String, buttonLabel: String, action: @escaping () -> Void) -> some View {
+    private func tutorialCard(systemImage: String, iconColor: Color, title: String, body: String, buttonLabel: String, action: @escaping () -> Void) -> some View {
         VStack(spacing: 20) {
-            Text(emoji).font(.system(size: 52))
+            Image(systemName: systemImage)
+                .font(.system(size: 44))
+                .foregroundStyle(iconColor)
+
             Text(title)
                 .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundStyle(Color(hex: "3D2C24"))
@@ -354,11 +399,15 @@ struct WhackAMouseView: View {
                 Text(String(format: "%06d", score))
                     .font(.system(size: 36, weight: .bold, design: .monospaced))
                     .foregroundStyle(Color(hex: "F0997B"))
+
                 HStack(spacing: 6) {
                     ForEach(0..<maxLives, id: \.self) { i in
-                        Text(i < lives ? "🐾" : "🩶").font(.system(size: 24))
+                        Image(systemName: i < lives ? "pawprint.fill" : "pawprint")
+                            .font(.system(size: 22))
+                            .foregroundStyle(i < lives ? Color(hex: "F0997B") : Color(hex: "D0C0B8"))
                     }
                 }
+
                 VStack(spacing: 12) {
                     Button(action: resumeGame) {
                         Text("Continue")
@@ -369,6 +418,7 @@ struct WhackAMouseView: View {
                             .background(RoundedRectangle(cornerRadius: 16).fill(Color(hex: "F0997B")))
                     }
                     .buttonStyle(.plain)
+
                     Button(action: giveUp) {
                         Text("Give up")
                             .font(.system(size: 16, weight: .medium))
@@ -435,7 +485,6 @@ struct WhackAMouseView: View {
                 withAnimation { tutorialStep = .step2_waited }
             },
             onTutorialTapSucceeded: {
-                // Player tapped the tutorial mouse — move to miss demo
                 withAnimation { tutorialStep = .step2_missDemo }
                 gameScene?.startTutorialStep2()
             }
@@ -492,10 +541,13 @@ struct WhackAMouseView: View {
     private func triggerCatCameo(combo: Int) {
         guard !showCatCameo else { return }
         let messages = [
-            "You're on fire! 🔥", "Keep going! 😻",
-            "\(combo)x combo!! 🎉", "Amazing! ⭐️", "Go go go! 🐾"
+            "You're on fire!",
+            "Keep going!",
+            "\(combo)x combo!!",
+            "Amazing!",
+            "Go go go!"
         ]
-        cameoMessage = messages.randomElement() ?? "Meow! 🐱"
+        cameoMessage = messages.randomElement() ?? "Meow!"
         withAnimation { showCatCameo = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
             withAnimation { showCatCameo = false }

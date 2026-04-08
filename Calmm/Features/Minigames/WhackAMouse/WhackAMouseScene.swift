@@ -1,12 +1,3 @@
-//
-//  WhackAMouseSceneDelegate.swift
-//  Calmm
-//
-//  Created by Raffaele Barra on 07/04/2026.
-//
-
-
-
 import SpriteKit
 import SwiftUI
 
@@ -37,24 +28,46 @@ final class WhackAMouseScene: SKScene {
     private let mouseSize: CGFloat = 90
     private let rows = 3
     private let cols = 3
+    private let mouseDuration: Double = 1.5   // fixed for entire game
+
+    // MARK: - Difficulty phases
+    // Each phase lasts phaseDuration seconds.
+    // spawnInterval and scoreTickAmount step up once per phase — never more often.
+    private let phaseDuration: Double = 30
+
+    private struct Phase {
+        let spawnInterval: Double
+        let scoreTickAmount: Int
+        let scoreTickInterval: Double
+        let doubleSpawn: Bool
+    }
+
+    private let phases: [Phase] = [
+        Phase(spawnInterval: 1.50, scoreTickAmount: 1, scoreTickInterval: 0.10, doubleSpawn: false), // 0–30s
+        Phase(spawnInterval: 1.20, scoreTickAmount: 2, scoreTickInterval: 0.09, doubleSpawn: false), // 30–60s
+        Phase(spawnInterval: 1.00, scoreTickAmount: 3, scoreTickInterval: 0.08, doubleSpawn: false), // 60–90s
+        Phase(spawnInterval: 0.80, scoreTickAmount: 4, scoreTickInterval: 0.07, doubleSpawn: false), // 90–120s
+        Phase(spawnInterval: 0.65, scoreTickAmount: 5, scoreTickInterval: 0.06, doubleSpawn: true),  // 120–150s
+        Phase(spawnInterval: 0.50, scoreTickAmount: 6, scoreTickInterval: 0.05, doubleSpawn: true),  // 150s+
+    ]
 
     // MARK: - State
     private(set) var score: Int = 0
     private(set) var lives: Int = 3
     private var combo: Int = 0
+    private var elapsedSeconds: Int = 0
+    private var currentPhaseIndex: Int = 0
     private var isRunning = false
     private var isPaused2 = false
     private var isTutorialMode = false
 
-    private var scoreTickInterval: TimeInterval = 0.08
-    private var scoreTickAmount: Int = 1
-    private var spawnInterval: TimeInterval = 1.5
-    private var mouseDuration: TimeInterval = 1.8
-    private var doubleSpawnActive = false
-
     private var holes: [HoleNode] = []
+    private var clockTimer: Timer?
     private var scoreTickTimer: Timer?
     private var spawnScheduler: DispatchWorkItem?
+
+    // Current phase shorthand
+    private var currentPhase: Phase { phases[min(currentPhaseIndex, phases.count - 1)] }
 
     // MARK: - Setup
 
@@ -127,8 +140,13 @@ final class WhackAMouseScene: SKScene {
         score = 0
         lives = maxLives
         combo = 0
+        elapsedSeconds = 0
+        currentPhaseIndex = 0
+
         gameDelegate?.livesChanged(lives: lives)
         gameDelegate?.scoreChanged(score: score)
+
+        startClockTimer()
         startScoreTicker()
         scheduleNextSpawn()
     }
@@ -174,6 +192,7 @@ final class WhackAMouseScene: SKScene {
     func resumeGame() {
         guard isRunning, isPaused2 else { return }
         isPaused2 = false
+        startClockTimer()
         startScoreTicker()
         scheduleNextSpawn()
         holes.forEach { $0.unfreezeMouse() }
@@ -192,71 +211,70 @@ final class WhackAMouseScene: SKScene {
     }
 
     private func stopTimers() {
+        clockTimer?.invalidate()
+        clockTimer = nil
         scoreTickTimer?.invalidate()
         scoreTickTimer = nil
         spawnScheduler?.cancel()
         spawnScheduler = nil
     }
 
+    // MARK: - Clock (1 Hz)
+    // Advances time. Checks if we crossed into a new phase.
+    // This is the ONLY place difficulty changes — never on hit, never on score.
+
+    private func startClockTimer() {
+        clockTimer?.invalidate()
+        clockTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self, self.isRunning, !self.isPaused2 else { return }
+            self.elapsedSeconds += 1
+
+            let newPhaseIndex = min(
+                self.phases.count - 1,
+                Int(Double(self.elapsedSeconds) / self.phaseDuration)
+            )
+
+            // Only update if we actually moved to the next phase
+            if newPhaseIndex != self.currentPhaseIndex {
+                self.currentPhaseIndex = newPhaseIndex
+                // Restart score ticker with new interval — only happens once per phase
+                self.startScoreTicker()
+                // Show phase change flash
+                self.showPhaseChangeEffect()
+            }
+        }
+    }
+
     // MARK: - Score ticker
+    // Interval and amount come from currentPhase — set once per phase, never mid-phase
 
     private func startScoreTicker() {
         scoreTickTimer?.invalidate()
         scoreTickTimer = Timer.scheduledTimer(
-            withTimeInterval: scoreTickInterval,
+            withTimeInterval: currentPhase.scoreTickInterval,
             repeats: true
         ) { [weak self] _ in
             guard let self, self.isRunning, !self.isPaused2 else { return }
-            self.score += self.scoreTickAmount
+            self.score += self.currentPhase.scoreTickAmount
             self.gameDelegate?.scoreChanged(score: self.score)
         }
     }
 
-    // MARK: - Difficulty
-
-    private func updateDifficulty() {
-        switch score {
-        case 0..<500:
-            spawnInterval = 1.5; mouseDuration = 1.8
-            scoreTickInterval = 0.08; scoreTickAmount = 1
-            doubleSpawnActive = false
-        case 500..<1500:
-            spawnInterval = 1.2; mouseDuration = 1.4
-            scoreTickInterval = 0.06; scoreTickAmount = 2
-            doubleSpawnActive = false
-        case 1500..<3000:
-            spawnInterval = 0.95; mouseDuration = 1.1
-            scoreTickInterval = 0.05; scoreTickAmount = 3
-            doubleSpawnActive = false
-        case 3000..<5000:
-            spawnInterval = 0.75; mouseDuration = 0.85
-            scoreTickInterval = 0.04; scoreTickAmount = 4
-            doubleSpawnActive = true
-        case 5000..<8000:
-            spawnInterval = 0.60; mouseDuration = 0.65
-            scoreTickInterval = 0.03; scoreTickAmount = 5
-            doubleSpawnActive = true
-        default:
-            spawnInterval = 0.45; mouseDuration = 0.50
-            scoreTickInterval = 0.025; scoreTickAmount = 6
-            doubleSpawnActive = true
-        }
-        startScoreTicker()
-    }
-
     // MARK: - Spawn
+    // Uses currentPhase.spawnInterval — stable within a phase, steps cleanly at phase boundary
 
     private func scheduleNextSpawn() {
         guard isRunning, !isPaused2 else { return }
-        let delay = max(0.3, spawnInterval + Double.random(in: -0.1...0.1))
+        let interval = currentPhase.spawnInterval
+        let jitter = Double.random(in: -0.06...0.06)  // tiny jitter so it doesn't feel robotic
+        let delay = max(0.25, interval + jitter)
 
         let item = DispatchWorkItem { [weak self] in
             guard let self, self.isRunning, !self.isPaused2 else { return }
             self.spawnMouse()
-            if self.doubleSpawnActive {
-                DispatchQueue.main.asyncAfter(
-                    deadline: .now() + Double.random(in: 0.15...0.3)
-                ) { [weak self] in
+            if self.currentPhase.doubleSpawn {
+                let doubleDelay = Double.random(in: 0.15...0.30)
+                DispatchQueue.main.asyncAfter(deadline: .now() + doubleDelay) { [weak self] in
                     guard let self, self.isRunning, !self.isPaused2 else { return }
                     self.spawnMouse()
                 }
@@ -305,16 +323,19 @@ final class WhackAMouseScene: SKScene {
     private func whackHole(_ hole: HoleNode) {
         hole.hideMouse(animated: true)
         combo += 1
-        let hitBonus = combo >= 3 ? scoreTickAmount * 15 : scoreTickAmount * 8
+        let hitBonus = combo >= 3
+            ? currentPhase.scoreTickAmount * 15
+            : currentPhase.scoreTickAmount * 8
         score += hitBonus
         gameDelegate?.scoreChanged(score: score)
-        updateDifficulty()
+
         showFloatingText(
             "+\(hitBonus)", at: hole.position,
             color: combo >= 3
                 ? UIColor(Color(hex: "D85A30"))
                 : UIColor(Color(hex: "F0997B"))
         )
+
         if combo >= 3 && combo % 3 == 0 {
             showComboEffect()
             gameDelegate?.comboReached(combo: combo)
@@ -345,14 +366,12 @@ final class WhackAMouseScene: SKScene {
     private func triggerGameOver() {
         stopEverything()
 
-        // All mice pop up one by one
         for (i, hole) in holes.enumerated() {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.07) {
                 hole.showMouse(stayDuration: 99)
             }
         }
 
-        // Red overlay
         let overlay = SKSpriteNode(
             color: UIColor.red.withAlphaComponent(0.0),
             size: CGSize(width: size.width, height: size.height)
@@ -362,7 +381,6 @@ final class WhackAMouseScene: SKScene {
         addChild(overlay)
         overlay.run(SKAction.fadeAlpha(to: 0.4, duration: 0.5))
 
-        // Longer delay so player stops tapping before result screen appears
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) { [weak self] in
             guard let self else { return }
             let coins = self.coinsForScore(self.score)
@@ -378,6 +396,24 @@ final class WhackAMouseScene: SKScene {
         case 2000..<5000: return 47 + (score - 2000) / 30
         default:          return 147 + (score - 5000) / 20
         }
+    }
+
+    // MARK: - Visual FX
+
+    private func showPhaseChangeEffect() {
+        // Subtle white pulse to signal speed increase
+        let flash = SKSpriteNode(
+            color: UIColor.white.withAlphaComponent(0.0),
+            size: CGSize(width: size.width, height: size.height)
+        )
+        flash.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        flash.zPosition = 48
+        addChild(flash)
+        flash.run(SKAction.sequence([
+            SKAction.fadeAlpha(to: 0.18, duration: 0.15),
+            SKAction.fadeOut(withDuration: 0.35),
+            SKAction.removeFromParent()
+        ]))
     }
 
     private func showFloatingText(_ text: String, at position: CGPoint, color: UIColor) {
@@ -461,7 +497,6 @@ final class HoleNode: SKNode {
 
         let sprite = makeMouseSprite()
         sprite.size = CGSize(width: mouseSize, height: mouseSize)
-        // Positioned above the hole so it looks like popping out
         sprite.position = CGPoint(x: 0, y: holeSize * 0.3)
         sprite.zPosition = 2
         sprite.setScale(0)
