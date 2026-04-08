@@ -8,18 +8,36 @@ struct RootView: View {
 
     @State private var rootViewModel = RootViewModel()
     @State private var needsViewModel = CatNeedsViewModel()
+    @State private var showingWelcome = true
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            currentTabView
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        Group {
+            if showingWelcome {
+                WelcomeView(onFinished: {
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        showingWelcome = false
+                    }
+                })
+            } else if let cat = cats.first {
+                if !cat.hasCompletedOnboarding {
+                    OnboardingView(cat: cat)
+                } else {
+                    ZStack(alignment: .bottom) {
+                        currentTabView
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if !shouldHideTabBar {
-                CustomTabBar(selectedTab: $rootViewModel.selectedTab)
+                        if !shouldHideTabBar {
+                            CustomTabBar(selectedTab: $rootViewModel.selectedTab)
+                        }
+                    }
+                    .ignoresSafeArea(edges: .bottom)
+                }
+            } else {
+                Color(hex: "FDF6EE").ignoresSafeArea()
+                    .onAppear { ensureCatExists() }
             }
         }
         .environment(needsViewModel)
-        .ignoresSafeArea(edges: .bottom)
         .onAppear {
             ensureCatExists()
             connectNeedsIfPossible()
@@ -59,7 +77,6 @@ struct RootView: View {
 
     private func ensureCatExists() {
         guard cats.isEmpty else { return }
-
         modelContext.insert(CatModel())
         try? modelContext.save()
     }

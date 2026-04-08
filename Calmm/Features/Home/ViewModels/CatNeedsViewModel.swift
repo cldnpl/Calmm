@@ -7,10 +7,12 @@ final class CatNeedsViewModel {
     enum Need: Hashable {
         case hunger
         case cleanliness
+        case happiness
     }
 
     private(set) var hunger: Double = 100
     private(set) var cleanliness: Double = 100
+    private(set) var happiness: Double = 80
     private(set) var coins: Int = 0
     private(set) var ownedAccessoryIDs: Set<String> = []
     private(set) var equippedAccessoryIDs: Set<String> = []
@@ -20,8 +22,9 @@ final class CatNeedsViewModel {
     // Local tester-only switch. Turn this off before shipping.
     private let testerInfiniteCoinsEnabled = true
 
-    private let hungerDecayPerSecond = 1.0 / 90.0
-    private let cleanlinessDecayPerSecond = 1.0 / 120.0
+    private let hungerDecayPerSecond = GameConfig.hungerDecayPerSecond
+    private let cleanlinessDecayPerSecond = GameConfig.cleanlinessDecayPerSecond
+    private let happinessDecayPerSecond = GameConfig.happinessDecayPerSecond
     private let restoreTickDuration: Duration = .milliseconds(180)
     private let restorePointsPerTick = 1.2
 
@@ -32,6 +35,7 @@ final class CatNeedsViewModel {
 
     var hungerPercentage: Double { hunger }
     var cleanlinessPercentage: Double { cleanliness }
+    var happinessPercentage: Double { happiness }
     var coinCount: Int { coins }
     var hasInfiniteCoins: Bool { testerInfiniteCoinsEnabled }
     var coinCountText: String {
@@ -156,7 +160,6 @@ final class CatNeedsViewModel {
     func connect(modelContext: ModelContext, cat: CatModel) {
         self.modelContext = modelContext
         self.cat = cat
-
         syncFromStorage(now: Date())
         startDecayLoopIfNeeded()
     }
@@ -175,17 +178,22 @@ final class CatNeedsViewModel {
         }
     }
 
-    func feedCat(amount: Double = 30) {
+    func feedCat(amount: Double = GameConfig.basicFoodHungerRestore) {
         startRestoration(for: .hunger, amount: amount)
     }
 
-    func cleanCat(amount: Double = 25) {
+    func cleanCat(amount: Double = GameConfig.brushCleanlinessRestore) {
         startRestoration(for: .cleanliness, amount: amount)
     }
 
-    func loadPreview(hunger: Double, cleanliness: Double) {
+    func petCat(amount: Double = GameConfig.petHappinessRestore) {
+        startRestoration(for: .happiness, amount: amount)
+    }
+
+    func loadPreview(hunger: Double, cleanliness: Double, happiness: Double = 80) {
         self.hunger = clamp(hunger)
         self.cleanliness = clamp(cleanliness)
+        self.happiness = clamp(happiness)
         self.coins = 100
         self.ownedAccessoryIDs = []
         self.equippedAccessoryIDs = []
@@ -212,6 +220,7 @@ final class CatNeedsViewModel {
         let elapsed = max(0, now.timeIntervalSince(cat.lastSeen))
         hunger = clamp(cat.hunger - elapsed * hungerDecayPerSecond)
         cleanliness = clamp(cat.cleanliness - elapsed * cleanlinessDecayPerSecond)
+        happiness = clamp(cat.happiness - elapsed * happinessDecayPerSecond)
         coins = cat.coins
         ownedAccessoryIDs = accessoryIDs(from: cat.ownedAccessoryIDsRaw)
         foodInventory = CatFoodCatalog.inventory(from: cat.foodInventoryRaw)
@@ -242,7 +251,7 @@ final class CatNeedsViewModel {
     private func applyDecay(seconds: TimeInterval) {
         hunger = clamp(hunger - seconds * hungerDecayPerSecond)
         cleanliness = clamp(cleanliness - seconds * cleanlinessDecayPerSecond)
-        // No SwiftData write on every tick — persisted only on scene phase change
+        happiness = clamp(happiness - seconds * happinessDecayPerSecond)
     }
 
     private func startRestoration(for need: Need, amount: Double) {
@@ -275,20 +284,28 @@ final class CatNeedsViewModel {
 
     private func finishRestoration(for need: Need) {
         restorationTasks[need] = nil
-        persistCurrentState(at: Date())  // Save once when restoration animation completes
+        persistCurrentState(at: Date())
     }
 
     private func value(for need: Need) -> Double {
         switch need {
-        case .hunger: return hunger
-        case .cleanliness: return cleanliness
+        case .hunger:
+            return hunger
+        case .cleanliness:
+            return cleanliness
+        case .happiness:
+            return happiness
         }
     }
 
     private func setValue(_ newValue: Double, for need: Need) {
         switch need {
-        case .hunger: hunger = clamp(newValue)
-        case .cleanliness: cleanliness = clamp(newValue)
+        case .hunger:
+            hunger = clamp(newValue)
+        case .cleanliness:
+            cleanliness = clamp(newValue)
+        case .happiness:
+            happiness = clamp(newValue)
         }
     }
 
@@ -297,6 +314,7 @@ final class CatNeedsViewModel {
 
         cat.hunger = hunger
         cat.cleanliness = cleanliness
+        cat.happiness = happiness
         cat.coins = coins
         cat.lastSeen = date
         cat.ownedAccessoryIDsRaw = rawAccessoryIDs(from: ownedAccessoryIDs)

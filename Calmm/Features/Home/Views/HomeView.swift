@@ -197,7 +197,7 @@ private struct FoodDragPreview: View {
             .resizable()
             .scaledToFit()
             .frame(width: 74, height: 74)
-        .shadow(color: .black.opacity(0.14), radius: 16, y: 8)
+            .shadow(color: .black.opacity(0.14), radius: 16, y: 8)
     }
 }
 
