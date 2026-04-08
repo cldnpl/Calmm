@@ -28,7 +28,7 @@ struct WelcomeView: View {
                 Spacer()
 
                 // App name
-                Text("Calmm")
+                Text("Purr")
                     .font(.system(size: 48, weight: .bold, design: .rounded))
                     .foregroundStyle(Color(hex: "3D2C24"))
                     .opacity(titleOpacity)

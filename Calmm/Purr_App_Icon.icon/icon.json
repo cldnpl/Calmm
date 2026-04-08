@@ -1,0 +1,37 @@
+{
+  "fill" : {
+    "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "hidden" : false,
+          "image-name" : "Backgroundcat.png",
+          "name" : "Backgroundcat",
+          "position" : {
+            "scale" : 0.57,
+            "translation-in-points" : [
+              1.9820877368173937,
+              22.129749147669713
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}
