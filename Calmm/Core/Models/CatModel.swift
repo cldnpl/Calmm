@@ -6,19 +6,26 @@ import SwiftData
 enum FurColor: String, Codable, CaseIterable {
     case orange
     case gray
-    case white
     case black
-    case brown
-    case cream
+
+    var assetName: String {
+        switch self {
+        case .orange: return "CatOrange"
+        case .gray:   return "CatGray"
+        case .black:  return "CatBlack"
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .orange: return "Orange"
+        case .gray:   return "Gray"
+        case .black:  return "Black"
+        }
+    }
 }
 
-enum EyeColor: String, Codable, CaseIterable {
-    case green
-    case blue
-    case yellow
-    case amber
-    case teal
-}
+
 
 enum AccessoryID: String, Codable, CaseIterable {
     case none
@@ -34,7 +41,6 @@ final class CatModel {
     // Identity
     var name: String
     var furColor: FurColor
-    var eyeColor: EyeColor
 
     // Stats (all 0.0 – 100.0)
     var hunger: Double
@@ -63,11 +69,9 @@ final class CatModel {
     init(
         name: String = "Calmm",
         furColor: FurColor = .orange,
-        eyeColor: EyeColor = .green
     ) {
         self.name = name
         self.furColor = furColor
-        self.eyeColor = eyeColor
         self.hunger = 100
         self.happiness = 80
         self.cleanliness = 100
@@ -131,8 +135,6 @@ extension CatModel {
 
     /// XP required to reach a given level (from level 1).
     static func xpRequired(forLevel level: Int) -> Int {
-        // Each level requires 500 * level XP from the previous level
-        // e.g. level 2 = 500, level 3 = 1000, level 4 = 1500 ...
         guard level > 1 else { return 0 }
         return (1..<level).reduce(0) { $0 + 500 * $1 }
     }
