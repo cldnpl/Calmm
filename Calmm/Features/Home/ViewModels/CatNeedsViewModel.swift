@@ -37,16 +37,20 @@ final class CatNeedsViewModel {
     var coinCountText: String {
         hasInfiniteCoins ? "∞ coins" : "\(coinCount) coins"
     }
+    var ownedAccessories: [CatAccessory] {
+        sortAccessories(
+            CatAccessoryCatalog.all.filter { ownedAccessoryIDs.contains($0.id) }
+        )
+    }
+    var shopAccessories: [CatAccessory] {
+        sortAccessories(
+            CatAccessoryCatalog.all.filter { !ownedAccessoryIDs.contains($0.id) }
+        )
+    }
     var equippedAccessories: [CatAccessory] {
-        equippedAccessoryIDs
-            .compactMap { CatAccessoryCatalog.accessory(for: $0) }
-            .sorted {
-                if $0.slot.renderOrder == $1.slot.renderOrder {
-                    return $0.name < $1.name
-                }
-
-                return $0.slot.renderOrder < $1.slot.renderOrder
-            }
+        sortAccessories(
+            equippedAccessoryIDs.compactMap { CatAccessoryCatalog.accessory(for: $0) }
+        )
     }
     var equippedAccessoryAssetNames: [String] {
         equippedAccessories.map(\.assetName)
@@ -86,6 +90,13 @@ final class CatNeedsViewModel {
             return equippedAccessory.slot != accessory.slot
         })
         equippedAccessoryIDs.insert(id)
+        persistCurrentState(at: Date())
+    }
+
+    func unequipAccessory(id: String) {
+        guard equippedAccessoryIDs.contains(id) else { return }
+
+        equippedAccessoryIDs.remove(id)
         persistCurrentState(at: Date())
     }
 
@@ -339,6 +350,16 @@ final class CatNeedsViewModel {
         }
 
         return Set(equippedBySlot.values)
+    }
+
+    private func sortAccessories(_ accessories: [CatAccessory]) -> [CatAccessory] {
+        accessories.sorted {
+            if $0.slot.renderOrder == $1.slot.renderOrder {
+                return $0.name < $1.name
+            }
+
+            return $0.slot.renderOrder < $1.slot.renderOrder
+        }
     }
 
     private func mergedFoodInventory(_ lhs: [String: Int], with rhs: [String: Int]) -> [String: Int] {

@@ -20,7 +20,7 @@ struct FoodInventoryTrayView: View {
                 x: size.width / 2,
                 y: size.height + 28
             )
-            let itemRadius = wheelRadius - 54
+            let itemRadius = wheelRadius - 68
 
             ZStack {
                 Circle()
@@ -127,7 +127,7 @@ private struct FoodWheelItemView: View {
             Image(entry.food.assetName)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 88, height: 88)
+                .frame(width: 124, height: 124)
                 .shadow(color: .black.opacity(0.16), radius: 8, y: 4)
 
             Text("x\(entry.count)")
@@ -137,9 +137,9 @@ private struct FoodWheelItemView: View {
                 .padding(.vertical, 4)
                 .background(Color(hex: "D85A30"))
                 .clipShape(Capsule())
-                .offset(x: 8, y: -6)
+                .offset(x: 10, y: -8)
         }
-        .frame(width: 98, height: 98)
+        .frame(width: 136, height: 136)
         .contentShape(Circle())
         .opacity(isHidden ? 0.12 : 1)
         .gesture(

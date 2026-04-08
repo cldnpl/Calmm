@@ -8,24 +8,26 @@ struct ShopView: View {
     @State private var pendingFoodPurchase: CatFood?
     @State private var foodPurchaseQuantity = 1
 
-    private let sections: [ShopSection] = [
-        ShopSection(
-            id: "clothes",
-            title: "CLOTHES",
-            subtitle: "Dress up your cat",
-            iconName: "tshirt.fill",
-            accentColorHex: "D97B5D",
-            items: CatAccessoryCatalog.all.map(ShopItem.init(accessory:))
-        ),
-        ShopSection(
-            id: "food",
-            title: "FOOD",
-            subtitle: "Snacks and treats",
-            iconName: "carrot.fill",
-            accentColorHex: "E4A64B",
-            items: CatFoodCatalog.all.map(ShopItem.init(food:))
-        )
-    ]
+    private var sections: [ShopSection] {
+        [
+            ShopSection(
+                id: "clothes",
+                title: "CLOTHES",
+                subtitle: "New items to buy",
+                iconName: "tshirt.fill",
+                accentColorHex: "D97B5D",
+                items: needsViewModel.shopAccessories.map(ShopItem.init(accessory:))
+            ),
+            ShopSection(
+                id: "food",
+                title: "FOOD",
+                subtitle: "Snacks and treats",
+                iconName: "carrot.fill",
+                accentColorHex: "E4A64B",
+                items: CatFoodCatalog.all.map(ShopItem.init(food:))
+            )
+        ]
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -170,7 +172,11 @@ struct ShopView: View {
             pendingFoodPurchase = food
         case .accessory:
             if needsViewModel.isAccessoryOwned(item.id) {
-                needsViewModel.equipAccessory(id: item.id)
+                if needsViewModel.isAccessoryEquipped(item.id) {
+                    needsViewModel.unequipAccessory(id: item.id)
+                } else {
+                    needsViewModel.equipAccessory(id: item.id)
+                }
                 return
             }
 
@@ -193,8 +199,8 @@ struct ShopView: View {
         case .accessory:
             if needsViewModel.isAccessoryEquipped(item.id) {
                 return ShopItemActionConfiguration(
-                    title: "Wearing",
-                    isDisabled: true,
+                    title: "Unwear",
+                    isDisabled: false,
                     statusText: "Your cat is wearing it"
                 )
             }
@@ -283,15 +289,24 @@ private struct ShopExpandableSection: View {
 
             if isExpanded {
                 VStack(spacing: 12) {
-                    ForEach(section.items) { item in
-                        ShopItemRow(
-                            item: item,
-                            accentColorHex: section.accentColorHex,
-                            action: actionConfiguration(item),
-                            onTap: {
-                                onTapItem(item)
-                            }
-                        )
+                    if section.items.isEmpty {
+                        Text(section.id == "clothes" ? "Purchased clothes move to your wardrobe." : "Nothing available right now.")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Color(hex: "866458"))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                    } else {
+                        ForEach(section.items) { item in
+                            ShopItemRow(
+                                item: item,
+                                accentColorHex: section.accentColorHex,
+                                action: actionConfiguration(item),
+                                onTap: {
+                                    onTapItem(item)
+                                }
+                            )
+                        }
                     }
                 }
                 .padding(.horizontal, 14)
@@ -365,13 +380,13 @@ private struct ShopItemRow: View {
         ZStack {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.white.opacity(0.95))
-                .frame(width: 72, height: 72)
+                .frame(width: artworkBackgroundSize, height: artworkBackgroundSize)
 
             if let assetName = item.assetName {
                 Image(assetName)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 66, height: 66)
+                    .frame(width: artworkImageSize, height: artworkImageSize)
                     .rotationEffect(rotationAngle(for: item))
             } else if let symbolName = item.symbolName {
                 Image(systemName: symbolName)
@@ -381,15 +396,19 @@ private struct ShopItemRow: View {
         }
     }
 
-    private func rotationAngle(for item: ShopItem) -> Angle {
-        guard item.kind == .accessory else { return .degrees(0) }
+    private var artworkBackgroundSize: CGFloat {
+        item.kind == .food ? 116 : 72
+    }
 
-        switch item.assetName {
-        case "Froghat", "Witchhat", "Jacketgrif", "Jackethuf", "Jacketrew", "Jacketsly", "Glassblue", "Glassgreen", "Glassred", "Glassyellow":
-            return .degrees(90)
-        default:
-            return .degrees(0)
-        }
+    private var artworkImageSize: CGFloat {
+        item.kind == .food ? 112 : 66
+    }
+
+    private func rotationAngle(for item: ShopItem) -> Angle {
+        guard item.kind == .accessory,
+              let accessory = CatAccessoryCatalog.accessory(for: item.id) else { return .degrees(0) }
+
+        return .degrees(accessory.previewRotationDegrees)
     }
 }
 

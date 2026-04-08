@@ -33,7 +33,7 @@ enum AppTab: Int, CaseIterable, Identifiable {
         case .home:
             return "kennel"
         case .style:
-            return "style"
+            return "wardrobe"
         case .profile:
             return "profile"
         }

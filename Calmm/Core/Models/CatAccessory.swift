@@ -20,6 +20,15 @@ struct CatAccessory: Identifiable, Equatable {
     let price: Int
     let assetName: String
     let slot: CatAccessorySlot
+
+    var previewRotationDegrees: Double {
+        switch assetName {
+        case "Froghat", "Witchhat", "Jacketgrif", "Jackethuf", "Jacketrew", "Jacketsly", "Glassblue", "Glassgreen", "Glassred", "Glassyellow":
+            return 90
+        default:
+            return 0
+        }
+    }
 }
 
 enum CatAccessoryCatalog {
