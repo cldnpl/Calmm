@@ -25,12 +25,16 @@ struct RootView: View {
                     ZStack(alignment: .bottom) {
                         currentTabView
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        CustomTabBar(selectedTab: $rootViewModel.selectedTab)
+
+                        if !shouldHideTabBar {
+                            CustomTabBar(selectedTab: $rootViewModel.selectedTab)
+                        }
                     }
                     .ignoresSafeArea(edges: .bottom)
                 }
             } else {
                 Color(hex: "FDF6EE").ignoresSafeArea()
+                    .onAppear { ensureCatExists() }
             }
         }
         .environment(needsViewModel)
@@ -46,8 +50,13 @@ struct RootView: View {
                 ensureCatExists()
                 connectNeedsIfPossible()
             }
+
             needsViewModel.handleScenePhase(newPhase)
         }
+    }
+
+    private var shouldHideTabBar: Bool {
+        rootViewModel.selectedTab == .home && needsViewModel.isFeedingModeActive
     }
 
     @ViewBuilder

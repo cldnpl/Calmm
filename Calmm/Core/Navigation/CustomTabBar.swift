@@ -57,3 +57,20 @@ struct CustomTabBar: View {
         .padding(.horizontal, 16)
     }
 }
+
+private struct CustomTabBarPreviewContainer: View {
+    @State private var selectedTab: AppTab = .shop
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Color(hex: "FFF3E8")
+                .ignoresSafeArea()
+
+            CustomTabBar(selectedTab: $selectedTab)
+        }
+    }
+}
+
+#Preview {
+    CustomTabBarPreviewContainer()
+}

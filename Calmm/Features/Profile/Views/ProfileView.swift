@@ -54,11 +54,8 @@ struct ProfileView: View {
         }
     }
 
-    // MARK: - Header
-
     private var headerSection: some View {
         VStack(spacing: 16) {
-            // Cat avatar
             ZStack {
                 Circle()
                     .fill(Color(hex: "F0997B").opacity(0.12))
@@ -87,7 +84,6 @@ struct ProfileView: View {
                 }
             }
 
-            // XP bar
             if let cat {
                 VStack(spacing: 6) {
                     GeometryReader { geo in
@@ -120,8 +116,6 @@ struct ProfileView: View {
             }
         }
     }
-
-    // MARK: - Stats
 
     private var statsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -188,8 +182,6 @@ struct ProfileView: View {
         .background(RoundedRectangle(cornerRadius: 16).fill(Color.white))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(hex: "E0D5CC"), lineWidth: 1))
     }
-
-    // MARK: - Achievements
 
     private var achievementsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -267,8 +259,6 @@ struct ProfileView: View {
         ]
     }
 
-    // MARK: - Settings
-
     private var settingsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("Settings")
@@ -325,8 +315,6 @@ struct ProfileView: View {
         }
     }
 
-    // MARK: - Helpers
-
     private func sectionTitle(_ text: String) -> some View {
         Text(text)
             .font(.system(size: 13, weight: .semibold))
@@ -357,8 +345,6 @@ struct ProfileView: View {
             .padding(.leading, 54)
     }
 
-    // MARK: - Reset
-
     private func resetGame() {
         guard let cat else { return }
         modelContext.delete(cat)
@@ -366,8 +352,6 @@ struct ProfileView: View {
         showResetSuccess = true
     }
 }
-
-// MARK: - Achievement model
 
 struct Achievement: Identifiable {
     let id: String

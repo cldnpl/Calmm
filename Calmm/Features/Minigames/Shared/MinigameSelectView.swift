@@ -1,16 +1,7 @@
-//
-//  MinigameSelectView.swift
-//  Calmm
-//
-//  Created by Raffaele Barra on 07/04/2026.
-//
-
-
 import SwiftUI
 import SwiftData
 
 struct MinigameSelectView: View {
-    @Query private var cats: [CatModel]
     @State private var showingWhackAMouse = false
 
     var body: some View {
@@ -18,7 +9,6 @@ struct MinigameSelectView: View {
             Color(hex: "FDF6EE").ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
                 Text("Mini Games")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(Color(hex: "3D2C24"))
@@ -26,7 +16,6 @@ struct MinigameSelectView: View {
                     .padding(.bottom, 32)
 
                 VStack(spacing: 16) {
-                    // Whack a Mouse
                     GameCard(
                         icon: "computermouse.fill",
                         iconColor: Color(hex: "5DCAA5"),
@@ -39,7 +28,6 @@ struct MinigameSelectView: View {
                         onTap: { showingWhackAMouse = true }
                     )
 
-                    // Locked placeholder
                     GameCard(
                         icon: "lock.fill",
                         iconColor: Color(hex: "B4B2A9"),
@@ -63,8 +51,6 @@ struct MinigameSelectView: View {
     }
 }
 
-// MARK: - GameCard
-
 private struct GameCard: View {
     let icon: String
     let iconColor: Color
@@ -79,7 +65,6 @@ private struct GameCard: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 16) {
-                // Icon box
                 ZStack {
                     RoundedRectangle(cornerRadius: 14)
                         .fill(iconColor.opacity(0.12))
@@ -100,7 +85,6 @@ private struct GameCard: View {
                         .foregroundStyle(Color(hex: "A08070"))
 
                     HStack(spacing: 8) {
-                        // Difficulty pill
                         Text(difficulty)
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(difficultyColor)
@@ -108,7 +92,6 @@ private struct GameCard: View {
                             .padding(.vertical, 3)
                             .background(Capsule().fill(difficultyColor.opacity(0.12)))
 
-                        // Reward label
                         if !rewardLabel.isEmpty {
                             HStack(spacing: 3) {
                                 Image(systemName: "dollarsign.circle.fill")

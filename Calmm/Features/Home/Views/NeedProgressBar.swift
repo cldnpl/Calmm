@@ -27,9 +27,13 @@ struct NeedProgressBar: View {
                 .padding(.vertical, 6)
                 .background(
                     Capsule()
-                        .fill(Color.white.opacity(0.16))
+                        .fill(Color.black.opacity(0.28))
                 )
-                .shadow(color: .black.opacity(0.14), radius: 3, y: 1)
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.22), radius: 4, y: 2)
 
                 Spacer()
 
@@ -59,5 +63,21 @@ struct NeedProgressBar: View {
             .frame(height: 10)
             .animation(.linear(duration: 0.9), value: clampedValue)
         }
+    }
+}
+
+#Preview {
+    ZStack {
+        Color(hex: "6E4638")
+            .ignoresSafeArea()
+
+        NeedProgressBar(
+            title: "Hunger",
+            systemImage: "fork.knife",
+            value: 76,
+            tint: Color(hex: "F0997B"),
+            trackTint: Color(hex: "5B382D")
+        )
+        .padding(20)
     }
 }

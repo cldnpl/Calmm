@@ -1,151 +1,210 @@
 import Combine
 import SwiftUI
-import SwiftData
 
 struct HomeView: View {
     @Environment(CatNeedsViewModel.self) private var needsViewModel
-    @Environment(\.modelContext) private var modelContext
-    @Query private var cats: [CatModel]
-
     @State private var viewModel = HomeViewModel()
-    @State private var isEditingName = false
-    @State private var draftName = ""
-    @FocusState private var nameFieldFocused: Bool
+    @State private var catFrame: CGRect = .zero
+    @State private var activeDraggedFood: ActiveDraggedFood?
+    @State private var isFeedButtonAnimating = false
 
-    private var cat: CatModel? { cats.first }
     private let idleTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ZStack(alignment: .bottom) {
+            contentLayer
+
+            if needsViewModel.isFeedingModeActive {
+                feedingTray
+                    .padding(.horizontal, 14)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .coordinateSpace(name: "home-space")
+        .overlay(alignment: .topLeading) {
+            feedButton
+                .padding(.top, 18)
+                .padding(.leading, 14)
+        }
+        .overlay(alignment: .topTrailing) {
+            coinsBadge
+                .padding(.top, 18)
+                .padding(.trailing, 10)
+        }
+        .overlay {
+            if let activeDraggedFood {
+                FoodDragPreview(food: activeDraggedFood.entry.food)
+                    .position(activeDraggedFood.location)
+                    .allowsHitTesting(false)
+            }
+        }
+        .onReceive(idleTimer) { _ in
+            viewModel.handleIdleTick()
+        }
+        .onAppear {
+            syncFeedButtonAnimation()
+        }
+        .onChange(of: needsViewModel.hungerPercentage) { _, _ in
+            syncFeedButtonAnimation()
+        }
+        .onChange(of: needsViewModel.isFeedingModeActive) { _, _ in
+            syncFeedButtonAnimation()
+        }
+        .onDisappear {
+            viewModel.cleanup()
+            needsViewModel.endFeedingMode()
+        }
+    }
+
+    private var contentLayer: some View {
+        ZStack(alignment: .bottom) {
             CatSceneView(
                 imageName: viewModel.currentImageName,
-                catGesture: catGesture
+                accessoryImageNames: needsViewModel.equippedAccessoryAssetNames,
+                catGesture: catGesture,
+                isInteractionEnabled: !needsViewModel.isFeedingModeActive,
+                onCatFrameChange: { frame in
+                    catFrame = frame
+                }
             )
-
-            // Cat name at the top
-            VStack {
-                catNameHeader
-                    .padding(.top, 56)
-                Spacer()
-            }
 
             CatNeedsOverlayView(
                 hunger: needsViewModel.hungerPercentage,
                 cleanliness: needsViewModel.cleanlinessPercentage
             )
             .padding(.horizontal, 20)
-            .padding(.bottom, 122)
-        }
-        .onReceive(idleTimer) { _ in
-            viewModel.handleIdleTick()
-        }
-        .onDisappear {
-            viewModel.cleanup()
+            .padding(.bottom, 580)
         }
     }
-
-    // MARK: - Cat name header
-
-    @ViewBuilder
-    private var catNameHeader: some View {
-        if isEditingName {
-            // Editing mode
-            HStack(spacing: 8) {
-                TextField("Cat name", text: $draftName)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color(hex: "3D2C24"))
-                    .multilineTextAlignment(.center)
-                    .focused($nameFieldFocused)
-                    .submitLabel(.done)
-                    .onSubmit { saveName() }
-                    .onChange(of: draftName) { _, newValue in
-                        if newValue.count > 12 {
-                            draftName = String(newValue.prefix(12))
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.white.opacity(0.85))
-                    )
-                    .frame(maxWidth: 180)
-
-                // Confirm button
-                Button(action: saveName) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 26))
-                        .foregroundStyle(Color(hex: "F0997B"))
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 24)
-            .transition(.opacity.combined(with: .scale(scale: 0.95)))
-        } else {
-            // Display mode
-            HStack(spacing: 6) {
-                Text(cat?.name ?? "Calmm")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color(hex: "3D2C24"))
-                    .shadow(color: .white.opacity(0.6), radius: 4, y: 1)
-
-                Button(action: startEditing) {
-                    Image(systemName: "pencil.circle.fill")
-                        .font(.system(size: 22))
-                        .foregroundStyle(Color(hex: "F0997B").opacity(0.85))
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 8)
-            .background(
-                Capsule()
-                    .fill(Color.white.opacity(0.6))
-            )
-            .transition(.opacity.combined(with: .scale(scale: 0.95)))
-        }
-    }
-
-    // MARK: - Gesture
 
     private var catGesture: some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
-                if isEditingName { saveName() }
+                guard !needsViewModel.isFeedingModeActive else { return }
                 viewModel.handleDragChanged(translation: value.translation)
             }
             .onEnded { value in
+                guard !needsViewModel.isFeedingModeActive else { return }
                 viewModel.handleDragEnded(translation: value.translation)
             }
     }
 
-    // MARK: - Name editing
+    private var feedButton: some View {
+        Button {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
+                needsViewModel.toggleFeedingMode()
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: needsViewModel.isFeedingModeActive ? "xmark.circle.fill" : "fork.knife.circle.fill")
+                    .font(.system(size: 16, weight: .bold))
 
-    private func startEditing() {
-        draftName = cat?.name ?? ""
-        isEditingName = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            nameFieldFocused = true
+                Text(needsViewModel.isFeedingModeActive ? "Close" : "Feed")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
+            .background(
+                Capsule()
+                    .fill(feedButtonBackground)
+            )
+            .overlay(
+                Capsule()
+                    .stroke(Color.white.opacity(0.72), lineWidth: 1)
+            )
+            .shadow(color: Color(hex: "D85A30").opacity(0.26), radius: 12, y: 6)
+            .scaleEffect(shouldPulseFeedButton ? (isFeedButtonAnimating ? 1.05 : 0.94) : 1)
+            .opacity(shouldPulseFeedButton ? (isFeedButtonAnimating ? 1 : 0.55) : 1)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var feedingTray: some View {
+        FoodInventoryTrayView(
+            foods: needsViewModel.availableFoods,
+            activeFoodID: activeDraggedFood?.entry.id,
+            onDragChanged: { entry, location in
+                activeDraggedFood = ActiveDraggedFood(entry: entry, location: location)
+            },
+            onDragEnded: { entry, location in
+                defer { activeDraggedFood = nil }
+
+                guard catFrame.contains(location) else { return }
+                _ = needsViewModel.feedCat(using: entry.id)
+            }
+        )
+    }
+
+    private var shouldPulseFeedButton: Bool {
+        needsViewModel.hungerPercentage < 40 && !needsViewModel.isFeedingModeActive
+    }
+
+    private var feedButtonBackground: LinearGradient {
+        LinearGradient(
+            colors: shouldPulseFeedButton
+                ? [Color(hex: "FF7A59"), Color(hex: "D85A30")]
+                : [Color(hex: "F0997B"), Color(hex: "D85A30")],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private func syncFeedButtonAnimation() {
+        if shouldPulseFeedButton {
+            withAnimation(.easeInOut(duration: 0.72).repeatForever(autoreverses: true)) {
+                isFeedButtonAnimating = true
+            }
+        } else {
+            isFeedButtonAnimating = false
         }
     }
 
-    private func saveName() {
-        let trimmed = draftName.trimmingCharacters(in: .whitespaces)
-        if !trimmed.isEmpty {
-            cat?.name = trimmed
-            try? modelContext.save()
+    private var coinsBadge: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "bitcoinsign.circle.fill")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(Color(hex: "E4A64B"))
+
+            Text(needsViewModel.coinCountText)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(Color(hex: "5A392D"))
         }
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            isEditingName = false
-        }
-        nameFieldFocused = false
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            Capsule()
+                .fill(.white.opacity(0.54))
+        )
+        .overlay(
+            Capsule()
+                .stroke(Color.white.opacity(0.7), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.08), radius: 10, y: 5)
+    }
+}
+
+private struct ActiveDraggedFood: Equatable {
+    let entry: CatFoodInventoryEntry
+    let location: CGPoint
+}
+
+private struct FoodDragPreview: View {
+    let food: CatFood
+
+    var body: some View {
+        Image(food.assetName)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 74, height: 74)
+            .shadow(color: .black.opacity(0.14), radius: 16, y: 8)
     }
 }
 
 #Preview {
     let needsViewModel = CatNeedsViewModel()
-    needsViewModel.loadPreview(hunger: 76, cleanliness: 88)
+    needsViewModel.loadPreview(hunger: 32, cleanliness: 88)
+
     return HomeView()
         .environment(needsViewModel)
-        .modelContainer(for: CatModel.self, inMemory: true)
 }
