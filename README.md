@@ -1,10 +1,10 @@
-# Calmm 🐾
+# Purr 🐾
 
-Welcome to **NAMETOBEDECIDED**, your virtual kitten companion! This project is a simple, engaging **Tamagotchi-style game** where you raise, care for, and train an adorable pixelated (or illustrated) cat.
+Welcome to **Purr**, your virtual kitten companion! This project is a simple, engaging **Tamagotchi-style game** where you raise, care for, and train an adorable pixelated (or illustrated) cat.
 
 ## 🌟 Project Purpose
 
-Calmm is a **passion project** created with the primary goal of learning and practicing **game development**. It's a playground for exploring core game concepts, including:
+Purr is a **passion project** created with the primary goal of learning and practicing **game development**. It's a playground for exploring core game concepts, including:
 
 * Character state management (hunger, happiness, energy)
 * User interface (UI) design for games
@@ -13,7 +13,7 @@ Calmm is a **passion project** created with the primary goal of learning and pra
 
 ## 🎮 Key Features
 
-Here’s what you can expect to do in Calmm:
+Here’s what you can expect to do in Purr:
 
 ### 1. **Raise Your Kitten (Tamagotchi Style)** 🐟
 Your kitten needs constant love and attention! Make sure to:
@@ -30,4 +30,4 @@ Once your kitten is strong enough, take the fight online! Challenge friends or r
 
 ---
 
-This is a work in progress. Feel free to explore the code, and thank you for checking out Calmm! 🐱
+This is a work in progress. Feel free to explore the code, and thank you for checking out Purr! 🐱
